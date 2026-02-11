@@ -1,6 +1,7 @@
 # ACP Spec — Universal Contract
 
-**One canonical thing: the contract + conformance tests.**  
+**Single source of truth:** [ACP-SPEC.md](./ACP-SPEC.md)
+
 All kernels (TS, Python, Go, etc.) must conform to this spec.
 
 ## Design Principle
@@ -13,8 +14,9 @@ All kernels (TS, Python, Go, etc.) must conform to this spec.
 
 | File | Purpose |
 |------|---------|
-| `request.json` | POST /manage request envelope schema |
-| `response.json` | Response envelope schema |
+| **ACP-SPEC.md** | **Canonical spec** — request/response, error codes, scopes, dry_run, idempotency, audit, meta |
+| `request.json` | POST /manage request envelope (JSON schema) |
+| `response.json` | Response envelope (JSON schema) |
 | `error-codes.json` | Standard error codes |
 | `impact.json` | Dry-run impact shape |
 | `audit-entry.json` | Audit log entry shape |
