@@ -8,6 +8,7 @@
     "test": "vitest",
     "test:invariants": "vitest tests/invariants.spec.ts",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
+    "verify": "tsx scripts/verify.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test:conformance": "vitest tests/conformance/conformance.spec.ts"

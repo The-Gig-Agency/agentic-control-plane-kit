@@ -101,6 +101,33 @@
       "type": "string",
       "description": "Optional prefix for all action names (e.g., 'myapp.')",
       "default": ""
+    },
+    "packs": {
+      "type": "object",
+      "description": "Pack configuration",
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["iam", "webhooks", "settings", "billing", "domain"]
+          },
+          "description": "List of enabled packs",
+          "default": ["iam", "webhooks", "settings", "domain"]
+        }
+      },
+      "required": ["enabled"]
+    },
+    "domain": {
+      "type": "object",
+      "description": "Domain-specific configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "Namespace prefix for domain actions (e.g., 'domain.leadscoring.*')",
+          "default": "domain"
+        }
+      }
     }
   }
 }

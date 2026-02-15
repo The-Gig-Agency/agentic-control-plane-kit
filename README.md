@@ -15,6 +15,8 @@ This kit provides:
 
 ## Quickstart
 
+See [INSTALL.md](./INSTALL.md) for the complete installation checklist.
+
 ### 1. Install
 
 ```bash
