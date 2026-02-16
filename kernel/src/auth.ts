@@ -35,11 +35,38 @@ export async function validateApiKey(
   const prefix = apiKey.slice(0, prefix_length);
   
   // Hash the full key for comparison
-  const encoder = new TextEncoder();
-  const data = encoder.encode(apiKey);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const keyHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // SECURITY: Use HMAC-SHA-256 with a pepper for production
+  // Current implementation uses SHA-256 as fallback
+  // For HMAC, set bindings.auth.hmac_pepper (from environment variable)
+  let keyHash: string;
+  
+  const hmacPepper = (bindings.auth as any).hmac_pepper;
+  if (hmacPepper) {
+    // HMAC-SHA-256 (recommended for production)
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(hmacPepper);
+    const messageData = encoder.encode(apiKey);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const hashArray = Array.from(new Uint8Array(signature));
+    keyHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } else {
+    // SHA-256 fallback (acceptable but HMAC preferred)
+    // TODO: Migrate to HMAC-SHA-256 in production
+    const encoder = new TextEncoder();
+    const data = encoder.encode(apiKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    keyHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   // Look up API key by prefix and hash
   const keyQuery = `

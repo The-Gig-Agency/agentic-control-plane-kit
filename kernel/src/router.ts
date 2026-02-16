@@ -15,6 +15,7 @@ import {
 import { validateRequest, validateParams, ValidationError } from './validate';
 import { validateApiKey, hasScope } from './auth';
 import { generateRequestId, logAudit, hashPayload } from './audit';
+import { sanitize } from './sanitize';
 import { getIdempotencyReplay, storeIdempotencyReplay } from './idempotency';
 import { checkRateLimit, getActionRateLimit } from './rate_limit';
 import { applyCeilings } from './ceilings';
@@ -371,6 +372,10 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     }
 
     // 12. Write audit log ALWAYS
+    // Sanitize snapshots before logging
+    const sanitizedBefore = beforeSnapshot ? sanitize(beforeSnapshot) : undefined;
+    const sanitizedAfter = afterSnapshot ? sanitize(afterSnapshot) : undefined;
+    
     await logAudit(auditAdapter, {
       tenantId: tenantId!,
       actorType: 'api_key',
@@ -378,9 +383,9 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
       apiKeyId,
       action,
       requestId,
-      payloadHash: hashPayload(JSON.stringify(req)),
-      beforeSnapshot,
-      afterSnapshot,
+      payloadHash: await hashPayload(req), // Now async, uses sanitized payload
+      beforeSnapshot: sanitizedBefore,
+      afterSnapshot: sanitizedAfter,
       impact: impact || undefined,
       result: 'success',
       idempotencyKey: idempotency_key,
