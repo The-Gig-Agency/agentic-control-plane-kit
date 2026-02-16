@@ -10,7 +10,8 @@ import {
   ActionHandler,
   ActionContext,
   KernelConfig,
-  ImpactShape
+  ImpactShape,
+  AuditEvent
 } from './types';
 import { validateRequest, validateParams, ValidationError } from './validate';
 import { validateApiKey, hasScope } from './auth';
@@ -171,17 +172,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     // 4. Enforce dry_run support check
     // If action is a mutation (supports_dry_run exists) but doesn't support dry_run, reject
     if (dry_run && !actionDef.supports_dry_run) {
-      await logAudit(auditAdapter, {
-        tenantId: tenantId!,
-        actorType: 'api_key',
-        actorId: keyPrefix || 'unknown',
-        apiKeyId,
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: tenantId!,
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: keyPrefix || 'unknown',
+          api_key_id: apiKeyId,
+        },
         action,
-        requestId,
-        result: 'error',
-        errorMessage: `Action ${action} does not support dry_run mode`,
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'error',
+        start_time: startTime,
+      }, {
+        error_code: 'VALIDATION_ERROR',
+        error_message: `Action ${action} does not support dry_run mode`,
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {
@@ -195,17 +202,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     // 5. Scope check (deny-by-default)
     const requiredScope = actionScopeMap[action] || actionDef.scope;
     if (requiredScope && !hasScope(scopes, requiredScope)) {
-      await logAudit(auditAdapter, {
-        tenantId: tenantId!,
-        actorType: 'api_key',
-        actorId: keyPrefix || 'unknown',
-        apiKeyId,
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: tenantId!,
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: keyPrefix || 'unknown',
+          api_key_id: apiKeyId,
+        },
         action,
-        requestId,
-        result: 'denied',
-        errorMessage: `Insufficient scope: requires '${requiredScope}'`,
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'denied',
+        start_time: startTime,
+      }, {
+        error_code: 'SCOPE_DENIED',
+        error_message: `Insufficient scope: requires '${requiredScope}'`,
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {
@@ -229,17 +242,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     );
 
     if (!rateLimitResult.allowed) {
-      await logAudit(auditAdapter, {
-        tenantId: tenantId!,
-        actorType: 'api_key',
-        actorId: keyPrefix || 'unknown',
-        apiKeyId,
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: tenantId!,
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: keyPrefix || 'unknown',
+          api_key_id: apiKeyId,
+        },
         action,
-        requestId,
-        result: 'error',
-        errorMessage: `Rate limit exceeded: ${rateLimitResult.limit} requests per minute`,
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'error',
+        start_time: startTime,
+      }, {
+        error_code: 'RATE_LIMITED',
+        error_message: `Rate limit exceeded: ${rateLimitResult.limit} requests per minute`,
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {
@@ -274,17 +293,22 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
       );
 
       if (replay) {
-        await logAudit(auditAdapter, {
-          tenantId: tenantId!,
-          actorType: 'api_key',
-          actorId: keyPrefix || 'unknown',
-          apiKeyId,
+        await emitAuditEvent(auditAdapter, {
+          tenant_id: tenantId!,
+          integration: bindings.integration,
+          actor: {
+            type: 'api_key',
+            id: keyPrefix || 'unknown',
+            api_key_id: apiKeyId,
+          },
           action,
-          requestId,
-          result: 'success',
-          idempotencyKey: idempotency_key,
-          ipAddress: meta.ipAddress,
-          dryRun: false
+          request_payload: req,
+          status: 'success',
+          start_time: startTime,
+        }, {
+          idempotency_key: idempotency_key,
+          ip_address: meta.ipAddress,
+          dry_run: false,
         });
 
         return {
@@ -301,17 +325,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
       validateParams(actionDef, params);
     } catch (error) {
       if (error instanceof ValidationError) {
-        await logAudit(auditAdapter, {
-          tenantId: tenantId!,
-          actorType: 'api_key',
-          actorId: keyPrefix || 'unknown',
-          apiKeyId,
+        await emitAuditEvent(auditAdapter, {
+          tenant_id: tenantId!,
+          integration: bindings.integration,
+          actor: {
+            type: 'api_key',
+            id: keyPrefix || 'unknown',
+            api_key_id: apiKeyId,
+          },
           action,
-          requestId,
-          result: 'error',
-          errorMessage: error.message,
-          ipAddress: meta.ipAddress,
-          dryRun: dry_run
+          request_payload: req,
+          status: 'error',
+          start_time: startTime,
+        }, {
+          error_code: 'VALIDATION_ERROR',
+          error_message: error.message,
+          ip_address: meta.ipAddress,
+          dry_run: dry_run,
         });
 
         return {
@@ -364,17 +394,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
         result = handlerResult.data !== undefined ? handlerResult.data : handlerResult;
       }
     } catch (error: any) {
-      await logAudit(auditAdapter, {
-        tenantId: tenantId!,
-        actorType: 'api_key',
-        actorId: keyPrefix || 'unknown',
-        apiKeyId,
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: tenantId!,
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: keyPrefix || 'unknown',
+          api_key_id: apiKeyId,
+        },
         action,
-        requestId,
-        result: 'error',
-        errorMessage: error.message,
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'error',
+        start_time: startTime,
+      }, {
+        error_code: 'INTERNAL_ERROR',
+        error_message: error.message,
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {
@@ -386,25 +422,52 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     }
 
     // 12. Write audit log ALWAYS
-    // Sanitize snapshots before logging
-    const sanitizedBefore = beforeSnapshot ? sanitize(beforeSnapshot) : undefined;
-    const sanitizedAfter = afterSnapshot ? sanitize(afterSnapshot) : undefined;
+    // Convert impact to result_meta format
+    let result_meta: AuditEvent['result_meta'] | undefined;
+    if (impact) {
+      // Extract resource info from impact
+      const firstCreate = impact.creates?.[0];
+      const firstUpdate = impact.updates?.[0];
+      const idsCreated = impact.creates
+        ?.flatMap(c => c.details?.ids || [])
+        .filter(Boolean) as string[] | undefined;
+      
+      result_meta = {
+        resource_type: firstCreate?.type || firstUpdate?.type,
+        resource_id: firstUpdate?.id,
+        count: firstCreate?.count || impact.deletes?.[0]?.count,
+        ids_created: idsCreated && idsCreated.length > 0 ? idsCreated : undefined,
+      };
+      
+      // Remove undefined fields
+      if (!result_meta.resource_type) delete result_meta.resource_type;
+      if (!result_meta.resource_id) delete result_meta.resource_id;
+      if (result_meta.count === undefined) delete result_meta.count;
+      if (!result_meta.ids_created) delete result_meta.ids_created;
+      
+      // If no useful metadata, set to undefined
+      if (Object.keys(result_meta).length === 0) {
+        result_meta = undefined;
+      }
+    }
     
-    await logAudit(auditAdapter, {
-      tenantId: tenantId!,
-      actorType: 'api_key',
-      actorId: keyPrefix || 'unknown',
-      apiKeyId,
+    await emitAuditEvent(auditAdapter, {
+      tenant_id: tenantId!,
+      integration: bindings.integration,
+      actor: {
+        type: 'api_key',
+        id: keyPrefix || 'unknown',
+        api_key_id: apiKeyId,
+      },
       action,
-      requestId,
-      payloadHash: await hashPayload(req), // Now async, uses sanitized payload
-      beforeSnapshot: sanitizedBefore,
-      afterSnapshot: sanitizedAfter,
-      impact: impact || undefined,
-      result: 'success',
-      idempotencyKey: idempotency_key,
-      ipAddress: meta.ipAddress,
-      dryRun: dry_run
+      request_payload: req,
+      status: 'success',
+      start_time: startTime,
+    }, {
+      result_meta,
+      idempotency_key: idempotency_key,
+      ip_address: meta.ipAddress,
+      dry_run: dry_run,
     });
 
     // 13. Store idempotency result for non-dry-run mutations
