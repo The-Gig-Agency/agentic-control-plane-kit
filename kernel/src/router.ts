@@ -15,7 +15,7 @@ import {
 } from './types';
 import { validateRequest, validateParams, ValidationError } from './validate';
 import { validateApiKey, hasScope } from './auth';
-import { generateRequestId, logAudit, hashPayload } from './audit';
+import { generateRequestId } from './audit';
 import { sanitize } from './sanitize';
 import { emitAuditEvent } from './audit-event';
 import { getIdempotencyReplay, storeIdempotencyReplay } from './idempotency';
@@ -44,6 +44,11 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     ceilingsAdapter,
     bindings
   } = config;
+
+  // Validate required bindings at startup (fail fast)
+  if (!bindings.integration || typeof bindings.integration !== 'string' || bindings.integration.trim() === '') {
+    throw new Error('bindings.integration is required and must be a non-empty string');
+  }
 
   // Merge all packs (including meta pack)
   const metaPack = getMetaPack();

@@ -306,5 +306,5 @@ grep "X-API-Key\|api.*key" ~/.bash_history ~/.zsh_history 2>/dev/null
 
 ---
 
-*Last Updated: February 2025*
+*Last Updated: February 2026*
 *Status: Security Hardening Guide*

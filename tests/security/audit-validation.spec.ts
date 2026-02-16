@@ -6,7 +6,7 @@
 
 import { sanitize, canonicalJson, redactString } from '../../kernel/src/sanitize';
 import { hashPayload } from '../../kernel/src/audit';
-import { emitAuditEvent, extractPack } from '../../kernel/src/audit-event';
+import { emitAuditEvent, extractPack, AuditEventContext } from '../../kernel/src/audit-event';
 import { AuditAdapter, AuditEvent } from '../../kernel/src/types';
 
 describe('Audit Layer Security Validation', () => {
@@ -314,6 +314,70 @@ describe('Audit Layer Security Validation', () => {
       expect(extractPack('webhooks.create')).toBe('webhooks');
       expect(extractPack('settings.update')).toBe('settings');
       expect(extractPack('unknown')).toBe('unknown');
+    });
+  });
+
+  describe('5. Error Handling', () => {
+    it('should not throw if adapter.logEvent() fails', async () => {
+      const failingAdapter = {
+        logEvent: async () => {
+          throw new Error('Database connection failed');
+        },
+        log: async () => {} // Legacy method
+      };
+
+      const ctx: AuditEventContext = {
+        tenant_id: 'tenant_123',
+        integration: 'test-integration',
+        actor: {
+          type: 'api_key',
+          id: 'test_key_123',
+        },
+        action: 'test.action',
+        request_payload: { test: 'data' },
+        status: 'success',
+      };
+
+      // Should not throw - audit failures should not break requests
+      await expect(
+        emitAuditEvent(failingAdapter, ctx, {})
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle adapter errors gracefully', async () => {
+      let consoleErrorCalled = false;
+      const originalError = console.error;
+      console.error = (...args: any[]) => {
+        consoleErrorCalled = true;
+        originalError(...args);
+      };
+
+      const failingAdapter = {
+        logEvent: async () => {
+          throw new Error('Network timeout');
+        },
+        log: async () => {}
+      };
+
+      const ctx: AuditEventContext = {
+        tenant_id: 'tenant_123',
+        integration: 'test-integration',
+        actor: {
+          type: 'api_key',
+          id: 'test_key_123',
+        },
+        action: 'test.action',
+        request_payload: { test: 'data' },
+        status: 'success',
+      };
+
+      await emitAuditEvent(failingAdapter, ctx, {});
+
+      // Error should be logged but not thrown
+      expect(consoleErrorCalled).toBe(true);
+
+      // Restore console.error
+      console.error = originalError;
     });
   });
 });

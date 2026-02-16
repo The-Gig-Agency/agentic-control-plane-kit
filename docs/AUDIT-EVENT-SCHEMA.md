@@ -21,6 +21,8 @@ This document defines the unified audit event schema for the Agentic Control Pla
 interface AuditEvent {
   // Identity & Timestamp
   event_id: string;           // UUID v4 - unique event identifier
+  event_version: number;      // Schema version (currently 1)
+  schema_version: number;     // Event schema version (currently 1) - for future migrations
   ts: number;                  // Unix timestamp (milliseconds)
   
   // Context
@@ -189,6 +191,7 @@ export async function emitAuditEvent(
   const event: AuditEvent = {
     event_id,
     event_version: 1,
+    schema_version: 1,  // Event schema version (for future migrations)
     ts,
     tenant_id: ctx.tenant_id,
     integration: ctx.integration,  // From bindings/context
@@ -201,7 +204,13 @@ export async function emitAuditEvent(
   };
   
   // 8. Emit via adapter (use logEvent, not log)
-  await adapter.logEvent(event);
+  // CRITICAL: Wrapped in try/catch - audit failures should not break requests
+  try {
+    await adapter.logEvent(event);
+  } catch (error) {
+    // Audit logging is "best effort" - log error but don't throw
+    console.error('[Audit] Failed to emit audit event:', error);
+  }
 }
 ```
 

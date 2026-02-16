@@ -60,7 +60,8 @@ export async function validateApiKey(
     keyHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   } else {
     // SHA-256 fallback (acceptable but HMAC preferred)
-    // TODO: Migrate to HMAC-SHA-256 in production
+    // Note: HMAC-SHA-256 is supported via bindings.auth.hmac_pepper
+    // If HMAC_PEPPER env var is set, HMAC will be used automatically
     const encoder = new TextEncoder();
     const data = encoder.encode(apiKey);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
