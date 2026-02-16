@@ -13,6 +13,8 @@ import {
   ImpactShape,
   AuditEvent
 } from './types';
+import { ExecutorAdapter } from './executor-adapter';
+import { ControlPlaneAdapter } from './control-plane-adapter';
 import { validateRequest, validateParams, ValidationError } from './validate';
 import { validateApiKey, hasScope } from './auth';
 import { generateRequestId } from './audit';
@@ -35,14 +37,20 @@ export interface ManageRouter {
   (req: ManageRequest, meta?: RequestMeta): Promise<ManageResponse>;
 }
 
-export function createManageRouter(config: KernelConfig & { packs: Pack[] }): ManageRouter {
+export function createManageRouter(config: KernelConfig & { 
+  packs: Pack[];
+  executor?: ExecutorAdapter;
+  controlPlane?: ControlPlaneAdapter;
+}): ManageRouter {
   const {
     dbAdapter,
     auditAdapter,
     idempotencyAdapter,
     rateLimitAdapter,
     ceilingsAdapter,
-    bindings
+    bindings,
+    executor,
+    controlPlane
   } = config;
 
   // Validate required bindings at startup (fail fast)
@@ -379,7 +387,12 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
         rateLimit: rateLimitAdapter,
         ceilings: ceilingsAdapter,
         bindings,
-        meta: meta
+        meta: {
+          ...meta,
+          executor,
+          controlPlane,
+          startTime,
+        }
       };
 
       if (dry_run) {
