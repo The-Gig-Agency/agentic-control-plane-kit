@@ -16,6 +16,7 @@ import { validateRequest, validateParams, ValidationError } from './validate';
 import { validateApiKey, hasScope } from './auth';
 import { generateRequestId, logAudit, hashPayload } from './audit';
 import { sanitize } from './sanitize';
+import { emitAuditEvent } from './audit-event';
 import { getIdempotencyReplay, storeIdempotencyReplay } from './idempotency';
 import { checkRateLimit, getActionRateLimit } from './rate_limit';
 import { applyCeilings } from './ceilings';
@@ -67,6 +68,7 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
   }
 
   return async (req: ManageRequest, meta: RequestMeta = {}): Promise<ManageResponse> => {
+    const startTime = Date.now(); // For latency calculation
     const requestId = generateRequestId();
     let tenantId: string | undefined;
     let apiKeyId: string | undefined;
@@ -103,16 +105,22 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     const authResult = await validateApiKey(meta.request, dbAdapter, bindings);
     
     if (!authResult.success) {
-      await logAudit(auditAdapter, {
-        tenantId: '',
-        actorType: 'api_key',
-        actorId: 'unknown',
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: '',
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: 'unknown',
+        },
         action,
-        requestId,
-        result: 'error',
-        errorMessage: authResult.error || 'Authentication failed',
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'error',
+        start_time: startTime,
+      }, {
+        error_code: 'INVALID_API_KEY',
+        error_message: authResult.error || 'Authentication failed',
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {
@@ -131,17 +139,23 @@ export function createManageRouter(config: KernelConfig & { packs: Pack[] }): Ma
     // 3. Lookup action in registry
     const actionEntry = actionRegistry.get(action);
     if (!actionEntry) {
-      await logAudit(auditAdapter, {
-        tenantId: tenantId!,
-        actorType: 'api_key',
-        actorId: keyPrefix || 'unknown',
-        apiKeyId,
+      await emitAuditEvent(auditAdapter, {
+        tenant_id: tenantId!,
+        integration: bindings.integration,
+        actor: {
+          type: 'api_key',
+          id: keyPrefix || 'unknown',
+          api_key_id: apiKeyId,
+        },
         action,
-        requestId,
-        result: 'error',
-        errorMessage: `Unknown action: ${action}`,
-        ipAddress: meta.ipAddress,
-        dryRun: dry_run
+        request_payload: req,
+        status: 'error',
+        start_time: startTime,
+      }, {
+        error_code: 'NOT_FOUND',
+        error_message: `Unknown action: ${action}`,
+        ip_address: meta.ipAddress,
+        dry_run: dry_run,
       });
 
       return {

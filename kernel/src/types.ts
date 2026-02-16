@@ -52,6 +52,7 @@ export interface ActionContext {
 }
 
 export interface Bindings {
+  integration: string;  // Integration/repo name (e.g., "ciq-automations", "lead-scoring")
   tenant: {
     table: string;
     id_column: string;
@@ -207,9 +208,56 @@ export interface Transaction {
   execute(sql: string, params?: any[]): Promise<number>;
 }
 
+export interface AuditEvent {
+  // Required
+  event_id: string;           // UUID v4 - unique event identifier
+  event_version: number;      // Schema version (currently 1)
+  ts: number;                  // Unix timestamp (milliseconds)
+  tenant_id: string;          // Tenant identifier
+  integration: string;         // Integration/repo name (e.g., "ciq-automations")
+  pack: string;                // Pack name (e.g., "iam", "domain", "webhooks")
+  action: string;              // Action name (e.g., "domain.publishers.create")
+  actor: {
+    type: 'api_key' | 'user' | 'system';
+    id: string;                // key_prefix for API keys, user_id for users
+    api_key_id?: string;       // UUID if actor is API key
+  };
+  request_hash: string;       // SHA-256 hash of canonical JSON of sanitized request
+  status: 'success' | 'error' | 'denied';
+  
+  // Optional
+  policy_decision_id?: string; // UUID from platform /authorize response
+  result_meta?: {
+    resource_type?: string;    // e.g., "campaign", "order"
+    resource_id?: string;      // e.g., "123", "campaign_abc"
+    count?: number;            // For list operations
+    ids_created?: string[];    // For create operations
+    diff_hash?: string;        // SHA-256 of before/after diff
+  };
+  run_id?: string;             // UUID for multi-step agent runs
+  correlation_id?: string;     // Thread/trace ID across services
+  node_id?: string;            // Executor identifier (repo instance/worker)
+  latency_ms?: number;         // Request processing time
+  error_code?: string;          // Error code (e.g., "VALIDATION_ERROR")
+  error_message_redacted?: string; // Sanitized error message (string, not object)
+  idempotency_key?: string;    // For safe retries
+  policy_version?: string;     // Policy version/hash (for platform)
+  ip_address?: string;         // Client IP
+  dry_run?: boolean;           // Was this a dry-run?
+}
+
 export interface AuditAdapter {
   /**
-   * Write an audit log entry
+   * Write an audit event (new unified format)
+   * 
+   * This is the preferred method. All new code should use this.
+   */
+  logEvent(event: AuditEvent): Promise<void>;
+  
+  /**
+   * Write an audit log entry (legacy format)
+   * 
+   * @deprecated Use logEvent() instead. This is kept for backward compatibility.
    */
   log(entry: AuditEntry): Promise<void>;
 }

@@ -3,8 +3,12 @@
   "title": "Control Plane Bindings",
   "description": "Schema for repo-specific bindings configuration",
   "type": "object",
-  "required": ["tenant", "auth", "database"],
+  "required": ["integration", "tenant", "auth", "database"],
   "properties": {
+    "integration": {
+      "type": "string",
+      "description": "Integration/repo name (e.g., 'ciq-automations', 'lead-scoring')"
+    },
     "tenant": {
       "type": "object",
       "required": ["table", "id_column", "get_tenant_fn", "is_admin_fn"],
