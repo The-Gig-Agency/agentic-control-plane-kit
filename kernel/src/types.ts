@@ -212,6 +212,7 @@ export interface AuditEvent {
   // Required
   event_id: string;           // UUID v4 - unique event identifier
   event_version: number;      // Schema version (currently 1)
+  schema_version: number;      // Event schema version (currently 1) - for future migrations
   ts: number;                  // Unix timestamp (milliseconds)
   tenant_id: string;          // Tenant identifier
   integration: string;         // Integration/repo name (e.g., "ciq-automations")

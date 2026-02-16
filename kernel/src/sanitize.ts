@@ -83,30 +83,98 @@ export function sanitize(obj: any): any {
  * 
  * Handles nested objects, arrays, and ensures consistent key ordering.
  * 
+ * CRITICAL: Must produce identical output across runtimes (Node, Deno, Edge).
+ * 
+ * Edge cases handled:
+ * - Floats: JSON.stringify normalizes 1.0 → 1 (consistent across runtimes)
+ * - Dates: Convert to ISO string before stringification
+ * - undefined: Omit from output (JSON.stringify does this)
+ * - BigInt: Convert to string (JSON.stringify throws, so handle explicitly)
+ * - null: Preserve as null
+ * 
+ * Strategy: Recursively sort keys, then use JSON.stringify with replacer for edge cases.
+ * 
  * @param obj - Object to stringify
  * @returns Canonical JSON string
  */
 export function canonicalJson(obj: any): string {
-  if (obj === null || obj === undefined) {
-    return JSON.stringify(obj);
+  // Handle null explicitly
+  if (obj === null) {
+    return 'null';
   }
   
+  // Handle undefined - JSON.stringify omits undefined
+  if (obj === undefined) {
+    return ''; // Omit from output
+  }
+  
+  // Handle primitives
   if (typeof obj !== 'object') {
+    // Handle BigInt (JSON.stringify throws on BigInt)
+    if (typeof obj === 'bigint') {
+      return JSON.stringify(obj.toString());
+    }
+    // JSON.stringify handles numbers consistently (1.0 → 1)
     return JSON.stringify(obj);
   }
   
-  if (Array.isArray(obj)) {
-    return '[' + obj.map(item => canonicalJson(item)).join(',') + ']';
+  // Handle Date objects - convert to ISO string for consistency
+  if (obj instanceof Date) {
+    return JSON.stringify(obj.toISOString());
   }
   
-  // Sort keys for deterministic output
+  // Handle arrays - recursively canonicalize each item
+  if (Array.isArray(obj)) {
+    const canonicalItems = obj.map(item => {
+      const canonicalStr = canonicalJson(item);
+      return canonicalStr !== '' ? JSON.parse(canonicalStr) : item;
+    });
+    return JSON.stringify(canonicalItems);
+  }
+  
+  // Handle objects - recursively sort keys for deterministic output
   const sortedKeys = Object.keys(obj).sort();
   const sortedObj: any = {};
   for (const key of sortedKeys) {
-    sortedObj[key] = obj[key];
+    const value = obj[key];
+    // Omit undefined values (JSON.stringify does this, but be explicit)
+    if (value !== undefined) {
+      // Recursively canonicalize nested structures
+      if (typeof value === 'object' && value !== null) {
+        if (Array.isArray(value)) {
+          // Arrays: recursively canonicalize each item
+          sortedObj[key] = value.map(item => {
+            const canonicalStr = canonicalJson(item);
+            return canonicalStr !== '' ? JSON.parse(canonicalStr) : item;
+          });
+        } else if (value instanceof Date) {
+          // Dates: convert to ISO string
+          sortedObj[key] = value.toISOString();
+        } else {
+          // Nested objects: recursively canonicalize (parse to get sorted structure)
+          const canonicalStr = canonicalJson(value);
+          sortedObj[key] = canonicalStr !== '' ? JSON.parse(canonicalStr) : value;
+        }
+      } else {
+        // Primitives: use as-is
+        sortedObj[key] = value;
+      }
+    }
   }
   
-  return JSON.stringify(sortedObj);
+  // Use JSON.stringify with replacer to handle edge cases
+  return JSON.stringify(sortedObj, (key, value) => {
+    // Handle BigInt (JSON.stringify throws on BigInt)
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // Dates should already be ISO strings from above, but handle if missed
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    // JSON.stringify omits undefined automatically
+    return value;
+  });
 }
 
 /**

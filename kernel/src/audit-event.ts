@@ -101,6 +101,7 @@ export async function emitAuditEvent(
   const event: AuditEvent = {
     event_id,
     event_version: 1,
+    schema_version: 1,  // Event schema version (for future migrations)
     ts,
     tenant_id: ctx.tenant_id,
     integration: ctx.integration,
