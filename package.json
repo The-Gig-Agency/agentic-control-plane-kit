@@ -14,7 +14,11 @@
     "verify": "tsx scripts/verify.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test:conformance": "vitest tests/conformance/conformance.spec.ts"
+    "test:conformance": "vitest tests/conformance/conformance.spec.ts",
+    "validate:installer": "bash installer/test/validate-installer.sh",
+    "validate:installer:django": "bash installer/test/validate-installer.sh django",
+    "validate:installer:express": "bash installer/test/validate-installer.sh express",
+    "validate:installer:supabase": "bash installer/test/validate-installer.sh supabase"
   },
   "keywords": [
     "control-plane",

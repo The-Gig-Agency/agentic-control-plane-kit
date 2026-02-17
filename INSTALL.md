@@ -1,14 +1,32 @@
-# Installation Checklist
+# Installation Guide
 
-This is the **only playbook** you need to install the agentic control plane in any repo.
+## Quick Start (Recommended)
 
-## Prerequisites
+**Use the automated installer:**
+
+```bash
+npx echelon install
+```
+
+The installer will:
+- Auto-detect your framework (Django, Express, Supabase)
+- Copy kernel into your project
+- Generate adapters, endpoint, bindings, and migrations
+- Optionally register with Governance Hub (Repo B)
+
+See [installer/README.md](./installer/README.md) for details.
+
+---
+
+## Manual Installation (Advanced)
+
+If you prefer manual installation or need custom setup, follow the steps below.
+
+### Prerequisites
 
 - Node.js 18+ and pnpm/npm/yarn
-- TypeScript
+- TypeScript (for TypeScript projects)
 - Your existing database client (Supabase, Prisma, etc.)
-
-## Installation Steps
 
 ### 1. Copy Kit into Repo
 

@@ -1,16 +1,32 @@
-# Integration Guide: Adding Agentic Control Plane to Lead Scoring SaaS
+# Integration Guide: Adding Agentic Control Plane to a SaaS
 
-This guide shows how to integrate the `agentic-control-plane-kit` into the [lead scoring repo](https://github.com/acedge123/api-docs-template) (Django backend).
+This guide shows how to integrate the `agentic-control-plane-kit` into a SaaS application (Django, Express, or Supabase).
 
-## Prerequisites
+## Quick Start (Recommended)
 
-- Django backend with existing API endpoints
-- Database with tenant isolation (likely using Django's multi-tenancy)
+**Use the automated installer:**
+
+```bash
+npx echelon install
+```
+
+The installer will handle everything automatically. See [installer/README.md](./installer/README.md) for details.
+
+---
+
+## Manual Integration (Advanced)
+
+If you prefer manual integration or need custom setup, follow the steps below.
+
+### Prerequisites
+
+- Django/Express/Supabase backend with existing API endpoints
+- Database with tenant isolation
 - API key authentication system (or ready to add one)
 
-## Step A: Vendor the Kit
+### Step A: Vendor the Kit
 
-### Option 1: Copy Folder (Fastest for Early Stage)
+### Option 1: Automated Installer (Recommended)
 
 ```bash
 # From lead-scoring repo root

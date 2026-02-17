@@ -121,13 +121,35 @@ To add support for a new framework:
 
 The kernel remains unchanged - it's framework-agnostic.
 
-## Testing
+## Testing & Validation
 
+Before offering to clients, validate the installer:
+
+### Quick Validation (20 minutes)
+See [QUICK-VALIDATION.md](./QUICK-VALIDATION.md) for a fast pre-release checklist.
+
+### Comprehensive Validation
+See [VALIDATION-PLAN.md](./VALIDATION-PLAN.md) for full test strategy.
+
+### Automated Tests
+```bash
+# Run automated validation
+npm run validate:installer
+
+# Test specific framework
+npm run validate:installer:django
+npm run validate:installer:express
+npm run validate:installer:supabase
+```
+
+### Manual Testing
 ```bash
 # Test installer locally
 cd /path/to/test-saas
 tsx ../agentic-control-plane-kit/installer/cli.ts install --framework django
 ```
+
+See [test/validate-manual.md](./test/validate-manual.md) for detailed manual test procedures.
 
 ## Publishing
 

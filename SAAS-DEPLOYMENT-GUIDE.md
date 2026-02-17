@@ -54,7 +54,34 @@ This guide walks through deploying the Agent Starter Kit (Repo A) to a new SaaS 
 
 ### Phase 1: Install the Kit
 
-#### Option A: Copy Kernel Source (Recommended for Early Stage)
+#### Option A: Automated Installer (Recommended)
+
+```bash
+# From your SaaS repo root
+cd /path/to/your-saas-repo
+
+# Run installer (auto-detects framework)
+npx echelon install
+
+# Or specify framework
+npx echelon install --framework django
+npx echelon install --framework express
+npx echelon install --framework supabase
+```
+
+The installer will:
+- Copy kernel into your project
+- Generate framework-specific adapters
+- Create `/api/manage` endpoint
+- Generate bindings configuration
+- Generate database migrations
+- Optionally register with Governance Hub (Repo B)
+
+See [installer/README.md](./installer/README.md) for details.
+
+#### Option B: Manual Installation (Advanced)
+
+If you need custom setup or prefer manual installation:
 
 ```bash
 # From your SaaS repo root
@@ -70,7 +97,7 @@ cp -r /path/to/agentic-control-plane-kit/kernel-py/acp backend/control_plane/
 cp -r /path/to/agentic-control-plane-kit/kernel/src backend/control_plane/
 ```
 
-#### Option B: Git Subtree (Recommended for Production)
+#### Option C: Git Subtree (For Production Manual Install)
 
 ```bash
 # Add as subtree
@@ -504,6 +531,7 @@ DATABASE_URL=postgresql://...
 # Optional: Repo B (Governance Hub)
 GOVERNANCE_HUB_URL=https://xxx.supabase.co
 ACP_KERNEL_KEY=acp_kernel_xxxxx  # Generated in Governance Hub
+GOVERNANCE_TENANT_ID=be1b7614-60ad-4e77-8661-cb4fcba9b314  # Tenant UUID registered in Repo B (required for Repo B integration)
 
 # Optional: Repo C (Key Vault Executor)
 CIA_URL=https://yyy.supabase.co
@@ -517,16 +545,26 @@ CIA_ANON_KEY=eyJ...  # Supabase anon key
 
 1. **Go to Governance Hub UI**
 2. **Create Organization** (if not exists)
-3. **Register Kernel**:
+3. **Create Tenant** (if not exists):
+   - This creates a tenant UUID in Repo B
+   - **Important**: This UUID is different from your local tenant ID (e.g., `user.id`)
+   - Copy the tenant UUID for use in `GOVERNANCE_TENANT_ID` env var
+
+4. **Register Kernel**:
    - Kernel ID: `yourproduct-kernel`
    - Organization: Your organization
    - Generate API Key: `acp_kernel_xxxxx`
    - Set `ACP_KERNEL_KEY` in your SaaS environment
+   - Set `GOVERNANCE_TENANT_ID` to the tenant UUID from step 3
 
-4. **Create Policies** (optional):
+5. **Create Policies** (optional):
    - Define which actions require approval
    - Set rate limits per tenant
    - Configure access rules
+
+**Note**: Repo A uses:
+- **Local tenant ID** (e.g., `user.id`) for local operations (idempotency, constraints)
+- **Governance tenant UUID** (from Repo B) for Repo B calls (authorization, audit)
 
 ---
 
