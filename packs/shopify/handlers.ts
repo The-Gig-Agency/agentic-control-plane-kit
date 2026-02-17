@@ -185,7 +185,11 @@ export const handleShopifyProductsList: ActionHandler = async (params, ctx) => {
   const response = await executor.execute<{ products: any[] }>(
     '/api/tenants/{tenantId}/shopify/products.list',
     params,
-    ctx.tenantId
+    ctx.tenantId,
+    {
+      kernel_id: (ctx.bindings as any).kernelId,
+      actor_id: ctx.apiKeyId,
+    }
   );
 
   await emitShopifyAuditEvent(ctx, 'shopify.products.list', 'success', response);
@@ -198,7 +202,11 @@ export const handleShopifyProductsGet: ActionHandler = async (params, ctx) => {
   const response = await executor.execute(
     '/api/tenants/{tenantId}/shopify/products.get',
     params,
-    ctx.tenantId
+    ctx.tenantId,
+    {
+      kernel_id: (ctx.bindings as any).kernelId,
+      actor_id: ctx.apiKeyId,
+    }
   );
 
   await emitShopifyAuditEvent(ctx, 'shopify.products.get', 'success', response);
@@ -240,7 +248,12 @@ export const handleShopifyProductsCreate: ActionHandler = async (params, ctx) =>
     const response = await executor.execute(
       '/api/tenants/{tenantId}/shopify/products.create',
       params,
-      ctx.tenantId
+      ctx.tenantId,
+      {
+        kernel_id: (ctx.bindings as any).kernelId,
+        policy_decision_id: authResult.decision_id,
+        actor_id: ctx.apiKeyId,
+      }
     );
 
     await emitShopifyAuditEvent(
@@ -315,7 +328,12 @@ export const handleShopifyProductsUpdate: ActionHandler = async (params, ctx) =>
     const response = await executor.execute(
       '/api/tenants/{tenantId}/shopify/products.update',
       params,
-      ctx.tenantId
+      ctx.tenantId,
+      {
+        kernel_id: (ctx.bindings as any).kernelId,
+        policy_decision_id: authResult.decision_id,
+        actor_id: ctx.apiKeyId,
+      }
     );
 
     await emitShopifyAuditEvent(
@@ -384,7 +402,12 @@ export const handleShopifyProductsDelete: ActionHandler = async (params, ctx) =>
     const response = await executor.execute(
       '/api/tenants/{tenantId}/shopify/products.delete',
       params,
-      ctx.tenantId
+      ctx.tenantId,
+      {
+        kernel_id: (ctx.bindings as any).kernelId,
+        policy_decision_id: authResult.decision_id,
+        actor_id: ctx.apiKeyId,
+      }
     );
 
     await emitShopifyAuditEvent(
@@ -425,7 +448,11 @@ export const handleShopifyOrdersList: ActionHandler = async (params, ctx) => {
   const response = await executor.execute<{ orders: any[] }>(
     '/api/tenants/{tenantId}/shopify/orders.list',
     params,
-    ctx.tenantId
+    ctx.tenantId,
+    {
+      kernel_id: (ctx.bindings as any).kernelId,
+      actor_id: ctx.apiKeyId,
+    }
   );
 
   await emitShopifyAuditEvent(ctx, 'shopify.orders.list', 'success', response);
@@ -438,7 +465,11 @@ export const handleShopifyOrdersGet: ActionHandler = async (params, ctx) => {
   const response = await executor.execute(
     '/api/tenants/{tenantId}/shopify/orders.get',
     params,
-    ctx.tenantId
+    ctx.tenantId,
+    {
+      kernel_id: (ctx.bindings as any).kernelId,
+      actor_id: ctx.apiKeyId,
+    }
   );
 
   await emitShopifyAuditEvent(ctx, 'shopify.orders.get', 'success', response);
@@ -479,7 +510,12 @@ export const handleShopifyOrdersCreate: ActionHandler = async (params, ctx) => {
     const response = await executor.execute(
       '/api/tenants/{tenantId}/shopify/orders.create',
       params,
-      ctx.tenantId
+      ctx.tenantId,
+      {
+        kernel_id: (ctx.bindings as any).kernelId,
+        policy_decision_id: authResult.decision_id,
+        actor_id: ctx.apiKeyId,
+      }
     );
 
     await emitShopifyAuditEvent(
@@ -548,7 +584,12 @@ export const handleShopifyOrdersCancel: ActionHandler = async (params, ctx) => {
     const response = await executor.execute(
       '/api/tenants/{tenantId}/shopify/orders.cancel',
       params,
-      ctx.tenantId
+      ctx.tenantId,
+      {
+        kernel_id: (ctx.bindings as any).kernelId,
+        policy_decision_id: authResult.decision_id,
+        actor_id: ctx.apiKeyId,
+      }
     );
 
     await emitShopifyAuditEvent(

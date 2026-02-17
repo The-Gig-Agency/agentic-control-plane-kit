@@ -6,3 +6,4 @@
 export { iamPack } from './iam';
 export { webhooksPack } from './webhooks';
 export { settingsPack } from './settings';
+export { shopifyPack } from './shopify';
