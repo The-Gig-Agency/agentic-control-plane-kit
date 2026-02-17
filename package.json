@@ -4,6 +4,9 @@
   "description": "Reusable starter kit for adding /manage control-plane API to multi-tenant SaaS platforms",
   "main": "kernel/index.ts",
   "types": "kernel/index.ts",
+  "bin": {
+    "echelon": "./cli/echelon.ts"
+  },
   "scripts": {
     "test": "vitest",
     "test:invariants": "vitest tests/invariants.spec.ts",

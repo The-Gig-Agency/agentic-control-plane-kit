@@ -15,7 +15,29 @@ This kit provides:
 
 ## Quickstart
 
-See [INSTALL.md](./INSTALL.md) for the complete installation checklist.
+### Option A: Automated Installation (Recommended)
+
+```bash
+# Install via CLI (auto-detects framework)
+npx echelon install
+
+# Or specify framework
+npx echelon install --framework django
+npx echelon install --framework express
+npx echelon install --framework supabase
+```
+
+The installer will:
+- Auto-detect your framework
+- Copy kernel into your project
+- Generate adapters, endpoint, bindings, and migrations
+- Optionally register with Governance Hub (Repo B)
+
+See [installer/README.md](./installer/README.md) for details.
+
+### Option B: Manual Installation
+
+See [INSTALL.md](./INSTALL.md) for the complete manual installation checklist.
 
 ### 1. Install
 
@@ -315,6 +337,9 @@ Use **kernel/** (TypeScript).
 ## Documentation
 
 - [spec/README.md](./spec/README.md) - Universal contract (source of truth)
+- [installer/README.md](./installer/README.md) - Automated installer (Echelon CLI)
+- [INSTALLER-ARCHITECTURE.md](./INSTALLER-ARCHITECTURE.md) - Installer architecture and design
+- [SAAS-DEPLOYMENT-GUIDE.md](./SAAS-DEPLOYMENT-GUIDE.md) - Manual deployment guide
 - [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) - Step-by-step integration for Django/Express/Supabase
 - [kernel-py/README.md](./kernel-py/README.md) - Python kernel (Django/FastAPI)
 
