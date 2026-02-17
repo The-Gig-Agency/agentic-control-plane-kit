@@ -10,6 +10,7 @@ import {
   RateLimitAdapter,
   CeilingsAdapter,
   AuditEntry,
+  AuditEvent,
   Transaction
 } from '../../kernel/src/types';
 
@@ -215,6 +216,11 @@ export class MockDbAdapter implements DbAdapter {
 
 export class MockAuditAdapter implements AuditAdapter {
   public entries: AuditEntry[] = [];
+  public events: AuditEvent[] = [];
+
+  async logEvent(event: AuditEvent): Promise<void> {
+    this.events.push(event);
+  }
 
   async log(entry: AuditEntry): Promise<void> {
     this.entries.push(entry);
@@ -224,8 +230,16 @@ export class MockAuditAdapter implements AuditAdapter {
     return this.entries[this.entries.length - 1];
   }
 
+  getLastEvent(): AuditEvent | undefined {
+    return this.events[this.events.length - 1];
+  }
+
   getEntriesByResult(result: 'success' | 'denied' | 'error'): AuditEntry[] {
     return this.entries.filter(e => e.result === result);
+  }
+
+  getEventsByStatus(status: 'success' | 'denied' | 'error'): AuditEvent[] {
+    return this.events.filter(e => e.status === status);
   }
 }
 
