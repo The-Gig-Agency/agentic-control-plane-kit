@@ -30,6 +30,31 @@ export interface AuthorizationResponse {
   decision_ttl_ms?: number;
 }
 
+export interface ProposalRequest {
+  org_id: string;
+  title: string;
+  summary: string;
+  proposal_kind: 'policy' | 'limit' | 'runbook' | 'revocation_suggestion';
+  proposal_spec_version: number;
+  proposal: {
+    type: 'LimitPolicy' | 'RequireApprovalPolicy';
+    data: Record<string, any>;
+  };
+  rationale: string;
+  evidence?: {
+    audit_event_ids?: string[];
+    links?: string[];
+  };
+  author_type: 'agent' | 'user' | 'system';
+  author_id: string;
+}
+
+export interface ProposalResponse {
+  proposal_id: string;
+  status: 'proposed' | 'approved' | 'rejected' | 'published';
+  message?: string;
+}
+
 export interface ControlPlaneAdapter {
   /**
    * Request authorization decision from Governance Hub
@@ -38,6 +63,13 @@ export interface ControlPlaneAdapter {
    * Kernels should cache decisions using decision_ttl_ms
    */
   authorize(request: AuthorizationRequest): Promise<AuthorizationResponse>;
+
+  /**
+   * Propose a policy to Governance Hub for review and approval
+   * 
+   * This is NOT on the hot path - proposals are async and require human approval
+   */
+  proposePolicy?(request: ProposalRequest): Promise<ProposalResponse>;
 }
 
 /**
@@ -71,6 +103,25 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
       
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(error.error || `Authorization failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.data || result;
+  }
+
+  async proposePolicy(request: ProposalRequest): Promise<ProposalResponse> {
+    const response = await fetch(`${this.platformUrl}/functions/v1/policy-propose`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.kernelApiKey}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Policy proposal failed: ${response.status}`);
     }
 
     const result = await response.json();
