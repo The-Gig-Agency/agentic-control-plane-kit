@@ -20,6 +20,8 @@ class ActionDef:
     description: str
     params_schema: Dict[str, Any]
     supports_dry_run: bool
+    billable: bool = True  # Optional: Whether this action should be billed (default: True)
+    billing_unit: Optional[str] = None  # Optional: "call" | "token" | "row" | "sec" | None
 
 
 @dataclass

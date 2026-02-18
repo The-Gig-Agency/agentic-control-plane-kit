@@ -16,6 +16,7 @@ Python implementation of the [ACP Spec](../spec/README.md). Conforms to the same
 kernel-py/
 ├── README.md
 ├── requirements.txt
+├── ONBOARDING-AND-BILLING.md  # Optional: Usage tracking and billing extensions
 ├── acp/
 │   ├── __init__.py
 │   ├── router.py        # Main router (create_manage_router)
@@ -23,6 +24,7 @@ kernel-py/
 │   ├── audit.py        # Audit logging
 │   ├── validate.py     # Request/params validation
 │   ├── types.py        # Type hints (mirrors spec)
+│   ├── usage.py        # Optional: Usage limit enforcement utilities
 │   └── meta_pack.py    # meta.actions, meta.version
 └── tests/
     └── ...
@@ -67,3 +69,13 @@ ACP_BASE_URL=http://localhost:8000/api/manage ACP_API_KEY=ock_xxx npm run test:c
 - Use `spec/` as source of truth for request/response shapes and error codes.
 - Adapters are Python equivalents of `kernel/src/types.ts` interfaces.
 - Packs define `actions` (list of ActionDef) and `handlers` (dict of name -> callable).
+
+## Optional Extensions
+
+See [ONBOARDING-AND-BILLING.md](./ONBOARDING-AND-BILLING.md) for optional features:
+- **Usage Limit Enforcement** - Free tier limits and upgrade prompts
+- **Onboarding Endpoint** - Self-service agent registration
+- **Usage Endpoint** - Check usage statistics
+- **Billing Support** - Billable flags in action definitions
+
+All extensions are backward compatible and opt-in.
