@@ -336,6 +336,12 @@ Use **kernel/** (TypeScript).
 
 ## Documentation
 
+### For Agents
+
+- **[Agent Governance Guide](./docs/AGENT-GOVERNANCE-GUIDE.md)** - Complete guide for agents using governance capabilities (policies, limits, runbooks, API actions, runbooks, troubleshooting)
+
+### For Developers
+
 - [spec/README.md](./spec/README.md) - Universal contract (source of truth)
 - [installer/README.md](./installer/README.md) - Automated installer (Echelon CLI)
 - [INSTALLER-ARCHITECTURE.md](./INSTALLER-ARCHITECTURE.md) - Installer architecture and design
