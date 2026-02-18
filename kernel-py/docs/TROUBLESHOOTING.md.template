@@ -1,0 +1,145 @@
+# Troubleshooting Guide for {KERNEL_NAME}
+
+> **⚠️ TODO: Customize this template for your kernel**
+> 
+> Replace `{KERNEL_NAME}` with your actual kernel name
+> Add kernel-specific troubleshooting steps and examples
+
+## Onboarding Issues
+
+### Error: "agent_id is required" or "email is required"
+**Solution:** Make sure your request includes both `agent_id` and `email` fields:
+```json
+{
+  "agent_id": "your-unique-agent-id",
+  "email": "your-email@example.com"
+}
+```
+
+### Error: "Onboarding service not configured"
+**Solution:** This is a server-side issue. Contact support or try again later.
+
+### Error: "Failed to create tenant"
+**Solution:** 
+- Check that your `agent_id` is unique
+- Verify your email is valid
+- Try again - the service may be temporarily unavailable
+
+## API Call Issues
+
+### Error: "Missing or invalid X-API-Key"
+**Solution:** 
+- Make sure you're including the `X-API-Key` header (not `x-api-key` or `API-Key`)
+- Verify you're using the API key from the onboarding response
+- Check for extra spaces or newlines in the API key
+
+### Error: "Invalid API Key"
+**Solution:**
+- The API key may have been revoked or doesn't exist
+- Re-onboard to get a new API key
+- Make sure you're using the key from the most recent onboarding
+
+### Error: "Authorization check failed" or Timeout
+**Solution:**
+- This usually means the authorization service is slow or unavailable
+- Wait a few seconds and try again
+- If it persists, contact support
+
+### Error: "UPGRADE_REQUIRED"
+**Solution:**
+- You've reached your free tier limit ({FREE_TIER_LIMIT} calls)
+- Add a payment method to continue using the API
+- Check your usage: `GET /api/usage` with your API key
+
+## {KERNEL_NAME}-Specific Issues
+
+> **TODO: Add kernel-specific troubleshooting steps here**
+> 
+> Examples:
+> - Common field name mistakes for your actions
+> - Validation errors specific to your domain
+> - Database constraint errors
+> - Action-specific error messages
+> 
+> **Example format:**
+> ```markdown
+> ### Error: "{EXAMPLE_ERROR_MESSAGE}"
+> **Solution:** {EXAMPLE_SOLUTION}
+> 
+> ### Error: "Field validation failed"
+> **Solution:** Check that {SPECIFIC_FIELD} meets {REQUIREMENT}
+> ```
+
+## Common Field Name Mistakes
+
+> **TODO: Document common mistakes for your kernel's actions**
+> 
+> **Example format:**
+> - ❌ `wrong_field_name` → ✅ `correct_field_name`
+> - ❌ `old_format` → ✅ `new_format`
+> - ❌ `deprecated_field` → ✅ `new_field`
+> 
+> Document your kernel's common mistakes here. Common issues include:
+> - Field name typos or variations
+> - Deprecated field names
+> - Incorrect data types (string vs number, array vs object)
+> - Missing required fields
+
+## Usage and Limits
+
+### How to Check Your Usage
+```bash
+curl -X GET {YOUR_API_URL}/api/usage \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+### Free Tier Limits
+- **{FREE_TIER_LIMIT} calls per month** included free
+- After {FREE_TIER_LIMIT} calls, you'll get `UPGRADE_REQUIRED` error
+- Add a payment method to continue
+
+### Warning Messages
+If you see a warning in the response like:
+```json
+{
+  "ok": true,
+  "data": {...},
+  "warning": {
+    "message": "You have {X} free calls remaining..."
+  }
+}
+```
+This means you're approaching your limit. Add a payment method soon.
+
+## Getting Help
+
+### Check the API Documentation
+See `API-DOCUMENTATION.md` for complete API reference with examples.
+
+### Verify Your Request Format
+1. Check that you're using the correct field names
+2. Verify your JSON is valid
+3. Make sure required fields are present
+
+### Still Having Issues?
+1. **Check the error message** - it usually tells you what's wrong
+2. **Verify your API key** - make sure it's from the onboarding response
+3. **Check field names** - use the exact names from the documentation
+4. **Try a simple request first** - start with one action to verify your setup
+
+## Quick Reference
+
+> **TODO: Add quick reference examples for your kernel's most common actions**
+
+### Minimal Valid Request
+> **TODO: Add a minimal working example for your most common action**
+
+```json
+{
+  "action": "{YOUR_ACTION_NAME}",
+  "params": {
+    // Add minimal example here
+    // Replace with your kernel's actual minimal request
+  }
+}
+```

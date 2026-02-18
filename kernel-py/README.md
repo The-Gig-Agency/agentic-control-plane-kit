@@ -79,3 +79,13 @@ See [ONBOARDING-AND-BILLING.md](./ONBOARDING-AND-BILLING.md) for optional featur
 - **Billing Support** - Billable flags in action definitions
 
 All extensions are backward compatible and opt-in.
+
+## Documentation Templates
+
+When implementing onboarding and billing, you should create documentation for agents:
+
+1. **TROUBLESHOOTING.md** - Common issues and solutions
+2. **API-DOCUMENTATION.md** - Complete API reference
+3. **FAQ.md** - Frequently asked questions
+
+See [docs/README.md](./docs/README.md) for templates and customization instructions.

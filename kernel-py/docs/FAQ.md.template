@@ -1,0 +1,68 @@
+# FAQ for {KERNEL_NAME}
+
+> **⚠️ TODO: Customize this template for your kernel**
+> 
+> Replace `{KERNEL_NAME}` with your actual kernel name
+> Add kernel-specific frequently asked questions
+
+## General Questions
+
+### Q: How do I get started?
+**A:** 
+1. Call the onboarding endpoint: `POST /api/onboard/{your-kernel-name}`
+2. Save your `api_key` and `tenant_uuid` from the response
+3. Use the `api_key` as `X-API-Key` header in all requests
+4. Start making API calls to `/api/manage`
+
+### Q: What is the free tier limit?
+**A:** {FREE_TIER_LIMIT} calls per month are included free. After that, add a payment method to continue.
+
+### Q: How do I check my usage?
+**A:** Call `GET /api/usage` with your `X-API-Key` header.
+
+### Q: What happens when I reach the free tier limit?
+**A:** You'll receive an `UPGRADE_REQUIRED` error. Add a payment method via the upgrade endpoint to continue.
+
+## API Usage Questions
+
+> **TODO: Add kernel-specific API questions**
+
+### Q: {EXAMPLE_QUESTION}
+**A:** {EXAMPLE_ANSWER}
+
+### Q: {EXAMPLE_QUESTION}
+**A:** {EXAMPLE_ANSWER}
+
+## Error Handling Questions
+
+### Q: What does "UPGRADE_REQUIRED" mean?
+**A:** You've reached your free tier limit. Add a payment method to continue using the API.
+
+### Q: What does "VALIDATION_ERROR" mean?
+**A:** Your request is missing required fields or has invalid values. Check the error message for details.
+
+### Q: What does "UNAUTHORIZED" mean?
+**A:** Your API key is missing or invalid. Make sure you're using the `X-API-Key` header with the key from onboarding.
+
+> **TODO: Add kernel-specific error questions**
+
+## Billing Questions
+
+### Q: How much does it cost?
+**A:** 
+- First {FREE_TIER_LIMIT} calls per month are free
+- After that: ${PRICE_PER_CALL} per call
+- Billing is monthly, based on actual usage
+
+### Q: When will I be charged?
+**A:** You'll be invoiced monthly based on your usage from the previous month.
+
+### Q: Can I cancel anytime?
+**A:** Yes, you can stop using the API at any time. You'll only be charged for calls you make.
+
+## Technical Questions
+
+> **TODO: Add kernel-specific technical questions**
+
+### Q: {TECHNICAL_QUESTION}
+**A:** {TECHNICAL_ANSWER}

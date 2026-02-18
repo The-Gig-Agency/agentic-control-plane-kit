@@ -1,0 +1,140 @@
+# {KERNEL_NAME} API Documentation
+
+> **⚠️ TODO: Customize this template for your kernel**
+> 
+> Replace `{KERNEL_NAME}` with your actual kernel name
+> Document all actions available in your kernel
+> Add examples for each action type
+
+## Authentication
+
+All API requests require an `X-API-Key` header with your API key obtained from onboarding.
+
+```bash
+curl -X POST {YOUR_API_URL}/api/manage \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{...}'
+```
+
+## Available Actions
+
+> **TODO: List all actions available in your kernel**
+> 
+> For each action, document:
+> - Required parameters
+> - Optional parameters
+> - Response format
+> - Example requests
+> - Common errors
+
+### `{ACTION_NAME}`
+
+**Description:** {ACTION_DESCRIPTION}
+
+**Required Parameters:**
+- `{param_name}` ({param_type}): {param_description}
+
+**Optional Parameters:**
+- `{param_name}` ({param_type}): {param_description}
+
+**Example Request:**
+```json
+{
+  "action": "{ACTION_NAME}",
+  "params": {
+    // Add example here
+  }
+}
+```
+
+**Example Response:**
+```json
+{
+  "ok": true,
+  "data": {
+    // Add example response here
+  }
+}
+```
+
+**Common Errors:**
+- `{ERROR_CODE}`: {ERROR_DESCRIPTION} - {SOLUTION}
+
+---
+
+## Field Requirements
+
+> **TODO: Document field requirements specific to your kernel**
+> 
+> Examples:
+> - Field name validation rules
+> - Required vs optional fields
+> - Data type requirements
+> - Format constraints
+
+### Field Name Validation
+> **TODO: Document your kernel's field validation rules**
+> 
+> **Generic example (customize for your kernel):**
+> - Can only contain: letters, numbers, underscores
+> - Cannot contain: spaces, hyphens, special characters
+> - Examples:
+>   - ✅ `valid_field_name`
+>   - ❌ `invalid-field-name` (hyphen not allowed)
+>   - ❌ `invalid field name` (space not allowed)
+
+### Data Types
+- Strings: Max length {MAX_LENGTH} characters
+- Numbers: Must be between {MIN} and {MAX}
+- Dates: ISO 8601 format (YYYY-MM-DD)
+
+## Error Codes
+
+> **TODO: Document all error codes your kernel can return**
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `VALIDATION_ERROR` | Invalid request parameters | Check required fields and formats |
+| `UNAUTHORIZED` | Missing or invalid API key | Verify X-API-Key header |
+| `UPGRADE_REQUIRED` | Free tier limit reached | Add payment method |
+| `{CUSTOM_ERROR}` | {DESCRIPTION} | {SOLUTION} |
+
+## Rate Limits
+
+- **Free Tier:** {FREE_TIER_LIMIT} calls per month
+- **Paid Tier:** Unlimited calls
+- **Per-minute limit:** {RATE_LIMIT} calls/minute (if applicable)
+
+## Best Practices
+
+> **TODO: Add best practices for using your kernel**
+
+1. **Always validate input** before sending requests
+2. **Handle errors gracefully** - check `ok` field in responses
+3. **Use idempotency keys** for critical operations
+4. **Monitor your usage** with `/api/usage` endpoint
+
+## Examples
+
+> **TODO: Add comprehensive examples for common use cases**
+
+### Example 1: {USE_CASE_NAME}
+```json
+{
+  "action": "{ACTION}",
+  "params": {
+    // Example params
+  }
+}
+```
+
+### Example 2: {USE_CASE_NAME}
+```json
+{
+  "action": "{ACTION}",
+  "params": {
+    // Example params
+  }
+}
+```
