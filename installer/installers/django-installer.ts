@@ -29,6 +29,9 @@ export async function installDjango(options: InstallOptions & { env?: Environmen
   
   const controlPlaneDir = path.join(backendDir, 'control_plane');
   
+  // Base path for endpoint (default: /api/manage)
+  const basePath = options.basePath || '/api/manage';
+  
   // Environment-aware defaults
   const kernelId = options.kernelId || (env === 'development' 
     ? `django-dev-${Date.now()}`
@@ -40,7 +43,8 @@ export async function installDjango(options: InstallOptions & { env?: Environmen
     ? 'django-dev'
     : 'django');
 
-  console.log(`📁 Installing to: ${controlPlaneDir}\n`);
+  console.log(`📁 Installing to: ${controlPlaneDir}`);
+  console.log(`📍 Endpoint path: ${basePath}\n`);
 
   // Step 1: Copy Python kernel
   console.log('📦 Copying Python kernel...');
@@ -63,30 +67,47 @@ export async function installDjango(options: InstallOptions & { env?: Environmen
     outputDir: backendDir,
     integration,
     kernelId,
+    basePath,  // Include base path in bindings
   });
   console.log('✅ Bindings generated\n');
 
-  // Step 4: Generate /api/manage endpoint
-  console.log('🌐 Generating /api/manage endpoint...');
+  // Step 4: Generate endpoint
+  console.log(`🌐 Generating ${basePath} endpoint...`);
   await generateEndpoint({
     framework: 'django',
     outputDir: backendDir,
     integration,
     kernelId,
+    basePath,  // Pass base path to generator
   });
   console.log('✅ Endpoint generated\n');
 
-  // Step 5: Generate migrations
-  console.log('🗄️  Generating database migrations...');
-  const migrationFiles = await generateMigrations({
-    framework: 'django',
-    outputDir: backendDir,
-  });
-  console.log(`✅ Migrations generated: ${migrationFiles.join(', ')}\n`);
+  // Step 5: Generate migrations (Phase 2: Skip if --no-migrations)
+  if (options.noMigrations) {
+    console.log('⚠️  Skipping migrations (--no-migrations flag)');
+    console.log('   You must run migrations manually before using ACP.\n');
+  } else {
+    console.log('🗄️  Generating database migrations...');
+    
+    // Phase 2: Validate migrations before generating
+    const { validateMigrations } = await import('../generators/generate-migrations.js');
+    const validationResult = await validateMigrations('django');
+    if (!validationResult.valid) {
+      console.error(`❌ Migration validation failed:\n${validationResult.errors.join('\n')}\n`);
+      throw new Error('Migration validation failed');
+    }
+    console.log('✅ Migration validation passed\n');
+    
+    const migrationFiles = await generateMigrations({
+      framework: 'django',
+      outputDir: backendDir,
+    });
+    console.log(`✅ Migrations generated: ${migrationFiles.join(', ')}\n`);
+  }
 
   // Step 6: Add URL route (update urls.py)
   console.log('🔗 Adding URL route...');
-  await addUrlRoute(backendDir);
+  await addUrlRoute(backendDir, basePath);
   console.log('✅ URL route added\n');
 
   // Step 7: Create .env.example (only if not in dev mode, or create dev-specific)
@@ -144,7 +165,7 @@ function copyDirectory(src: string, dest: string): void {
   }
 }
 
-async function addUrlRoute(backendDir: string): Promise<void> {
+async function addUrlRoute(backendDir: string, basePath: string): Promise<void> {
   // Try to find urls.py (could be in multiple locations)
   const possibleUrls = [
     path.join(backendDir, 'api', 'urls.py'),
@@ -161,15 +182,17 @@ async function addUrlRoute(backendDir: string): Promise<void> {
   }
 
   if (!urlsPath) {
-    console.warn('⚠️  Could not find urls.py. Please manually add: path("api/manage", manage_endpoint)');
+    // Extract route path from basePath (remove leading /api if present)
+    const routePath = basePath.replace(/^\/api\//, '').replace(/^\//, '');
+    console.warn(`⚠️  Could not find urls.py. Please manually add: path("${basePath}", manage_endpoint)`);
     return;
   }
 
   // Read existing urls.py
   let content = fs.readFileSync(urlsPath, 'utf-8');
   
-  // Check if already added
-  if (content.includes('manage_endpoint')) {
+  // Check if already added (check for both manage_endpoint and the basePath)
+  if (content.includes('manage_endpoint') || content.includes(basePath)) {
     console.log('   (Route already exists)');
     return;
   }
@@ -186,11 +209,13 @@ async function addUrlRoute(backendDir: string): Promise<void> {
     }
   }
 
-  // Add route to urlpatterns
+  // Add route to urlpatterns (use basePath)
+  // Normalize basePath for Django (remove leading slash if present)
+  const routePath = basePath.startsWith('/') ? basePath.slice(1) : basePath;
   if (content.includes('urlpatterns = [')) {
     content = content.replace(
       'urlpatterns = [',
-      `urlpatterns = [\n    path('api/manage', manage_endpoint, name='manage'),`
+      `urlpatterns = [\n    path('${routePath}', manage_endpoint, name='manage'),`
     );
   }
 
@@ -203,6 +228,16 @@ async function createEnvExample(backendDir: string, kernelId: string, integratio
   const envExample = `# Agentic Control Plane Configuration
 # Generated by Echelon installer
 # Environment: ${env.toUpperCase()}
+
+# Feature Flag (must be 'true' to enable ACP)
+ACP_ENABLED=false
+
+# Phase 3: Failure Mode (default: 'open')
+# Options:
+#   'open'      - Allow actions if governance hub unreachable (fail-open)
+#   'closed'    - Deny actions if governance hub unreachable (fail-closed)
+#   'read-open' - Allow reads if governance hub unreachable, require hub for writes
+ACP_FAIL_MODE=open
 
 # Kernel Identity
 KERNEL_ID=${kernelId}

@@ -19,6 +19,8 @@ import { doctor } from './doctor.js';
 import { status } from './status.js';
 import { writeInstallManifest, getKernelVersion, resolvePacksFromBindings } from './manifest.js';
 import readline from 'node:readline';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export type Environment = 'development' | 'staging' | 'production';
 
@@ -33,10 +35,22 @@ export interface InstallOptions {
   ciaServiceKey?: string;
   ciaAnonKey?: string;
   skipRegistration?: boolean;
+  basePath?: string;  // Base path for ACP endpoint (default: /api/manage)
+  // Phase 2: Migration Control
+  noMigrations?: boolean;  // Code-only install (skip migration generation)
+  migrationsOnly?: boolean;  // Generate migrations only (skip code installation)
+  dryRun?: boolean;  // Show what would be generated (no writes)
 }
 
 export async function install(options: InstallOptions = {}): Promise<void> {
   console.log('🚀 Echelon: Agentic Control Plane Installer\n');
+
+  // Phase 2: Handle dry-run mode (show diff, no writes)
+  if (options.dryRun) {
+    console.log('🔍 DRY RUN MODE - No files will be written\n');
+    await dryRunInstall(options);
+    return;
+  }
 
   // Prompt for environment if not specified (skip in CI/non-TTY)
   let env: Environment = options.env || 'development';
@@ -45,6 +59,13 @@ export async function install(options: InstallOptions = {}): Promise<void> {
   }
 
   console.log(`🌍 Environment: ${env.toUpperCase()}\n`);
+  
+  // Phase 2: Handle migrations-only mode
+  if (options.migrationsOnly) {
+    console.log('📦 MIGRATIONS-ONLY MODE - Generating migrations only\n');
+    await migrationsOnlyInstall(options, env);
+    return;
+  }
 
   // Detect framework if not specified
   const framework = options.framework === 'auto' || !options.framework
@@ -57,6 +78,11 @@ export async function install(options: InstallOptions = {}): Promise<void> {
   }
 
   console.log(`📦 Detected framework: ${framework}\n`);
+
+  // Pre-install validation (Phase 1: Critical Safety)
+  if (env === 'production') {
+    await validatePreInstall(options, framework);
+  }
 
   // In dev mode, use safe defaults
   if (env === 'development') {
@@ -150,6 +176,229 @@ export async function install(options: InstallOptions = {}): Promise<void> {
   }
 }
 
+/**
+ * Pre-install validation (Phase 1: Critical Safety)
+ * - Route collision detection
+ * - Production mode confirmation
+ */
+async function validatePreInstall(options: InstallOptions, framework: string): Promise<void> {
+  const cwd = process.cwd();
+  const basePath = options.basePath || '/api/manage';
+  
+  console.log('🔍 Running pre-install validation...\n');
+  
+  // 1. Route collision check
+  const collision = await checkRouteCollision(cwd, framework, basePath);
+  if (collision) {
+    console.error(`❌ Route collision detected: ${basePath} already exists\n`);
+    console.log('💡 Suggestions:');
+    console.log(`   Use --base-path /api/acp`);
+    console.log(`   Use --base-path /api/echelon`);
+    console.log(`   Use --base-path /api/control-plane\n`);
+    throw new Error(`Route collision: ${basePath} already exists. Use --base-path to specify alternative.`);
+  }
+  
+  // 2. Production mode confirmation
+  const confirmed = await promptConfirm('⚠️  Installing in PRODUCTION mode. Continue? [y/N]: ');
+  if (!confirmed) {
+    throw new Error('Installation cancelled by user');
+  }
+  
+  console.log('✅ Pre-install validation passed\n');
+}
+
+/**
+ * Check if route already exists in codebase
+ */
+async function checkRouteCollision(cwd: string, framework: string, basePath: string): Promise<boolean> {
+  // Normalize base path (remove leading/trailing slashes for matching)
+  const normalizedPath = basePath.replace(/^\/+|\/+$/g, '');
+  const pathPatterns = [
+    normalizedPath,
+    basePath,
+    `'${basePath}'`,
+    `"${basePath}"`,
+    `path('${normalizedPath}'`,
+    `path("${normalizedPath}"`,
+  ];
+  
+  if (framework === 'django') {
+    // Check urls.py files
+    const possibleUrls = [
+      path.join(cwd, 'backend', 'api', 'urls.py'),
+      path.join(cwd, 'backend', 'urls.py'),
+      path.join(cwd, 'api', 'urls.py'),
+      path.join(cwd, 'urls.py'),
+    ];
+    
+    for (const urlPath of possibleUrls) {
+      if (fs.existsSync(urlPath)) {
+        const content = fs.readFileSync(urlPath, 'utf-8');
+        // Check for any of the path patterns
+        for (const pattern of pathPatterns) {
+          if (content.includes(pattern)) {
+            return true;  // Collision found
+          }
+        }
+      }
+    }
+  } else if (framework === 'express' || framework === 'supabase') {
+    // Check for route definitions in common locations
+    const searchPaths = [
+      path.join(cwd, 'api', 'manage.ts'),
+      path.join(cwd, 'api', 'manage.js'),
+      path.join(cwd, 'routes', 'manage.ts'),
+      path.join(cwd, 'pages', 'api', 'manage.ts'),
+      path.join(cwd, 'supabase', 'functions', 'manage', 'index.ts'),
+    ];
+    
+    for (const searchPath of searchPaths) {
+      if (fs.existsSync(searchPath)) {
+        return true;  // File exists, assume collision
+      }
+    }
+    
+    // Also check route registrations in main files
+    const mainFiles = [
+      path.join(cwd, 'app.ts'),
+      path.join(cwd, 'app.js'),
+      path.join(cwd, 'server.ts'),
+      path.join(cwd, 'server.js'),
+      path.join(cwd, 'index.ts'),
+      path.join(cwd, 'index.js'),
+    ];
+    
+    for (const mainFile of mainFiles) {
+      if (fs.existsSync(mainFile)) {
+        const content = fs.readFileSync(mainFile, 'utf-8');
+        for (const pattern of pathPatterns) {
+          if (content.includes(pattern)) {
+            return true;  // Collision found
+          }
+        }
+      }
+    }
+  }
+  
+  return false;  // No collision
+}
+
+/**
+ * Prompt for yes/no confirmation
+ */
+async function promptConfirm(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  
+  return new Promise((resolve) => {
+    rl.question(message, (answer) => {
+      rl.close();
+      const confirmed = answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes';
+      resolve(confirmed);
+    });
+  });
+}
+
+/**
+ * Phase 2: Dry-run mode - show what would be generated without writing
+ */
+async function dryRunInstall(options: InstallOptions): Promise<void> {
+  const framework = options.framework === 'auto' || !options.framework
+    ? await detectFramework()
+    : options.framework;
+
+  if (!framework) {
+    console.error('❌ Could not detect framework. Please specify with --framework');
+    process.exit(1);
+  }
+
+  console.log(`📦 Would detect framework: ${framework}\n`);
+  console.log('📋 Files that would be generated:\n');
+
+  // Show what would be generated
+  const cwd = process.cwd();
+  const backendDir = fs.existsSync(path.join(cwd, 'backend')) 
+    ? path.join(cwd, 'backend')
+    : cwd;
+
+  if (framework === 'django') {
+    console.log('  📁 Kernel files:');
+    console.log(`     ${path.join(backendDir, 'control_plane', 'acp', '**/*.py')}`);
+    console.log('\n  🔧 Adapters:');
+    console.log(`     ${path.join(backendDir, 'control_plane', 'adapters', '__init__.py')}`);
+    console.log('\n  🌐 Endpoint:');
+    console.log(`     ${path.join(backendDir, 'control_plane', 'views', 'manage.py')}`);
+    console.log('\n  ⚙️  Bindings:');
+    console.log(`     ${path.join(backendDir, 'control_plane', 'bindings.py')}`);
+    
+    if (!options.noMigrations) {
+      console.log('\n  🗄️  Migrations:');
+      console.log(`     ${path.join(backendDir, 'your_app', 'migrations', 'XXXX_add_control_plane_tables.py')}`);
+    } else {
+      console.log('\n  ⚠️  Migrations: SKIPPED (--no-migrations)');
+    }
+    
+    console.log('\n  🔗 URL Route:');
+    console.log(`     Would add to: ${path.join(backendDir, 'api', 'urls.py')} (or similar)`);
+    console.log(`     Route: path('${options.basePath || '/api/manage'}', manage_endpoint)`);
+    
+    console.log('\n  📝 Environment:');
+    console.log(`     ${path.join(backendDir, '.env.example')}`);
+  }
+
+  console.log('\n✅ Dry-run complete. Use without --dry-run to actually install.\n');
+}
+
+/**
+ * Phase 2: Migrations-only mode - generate migrations without installing code
+ */
+async function migrationsOnlyInstall(options: InstallOptions, env: Environment): Promise<void> {
+  const framework = options.framework === 'auto' || !options.framework
+    ? await detectFramework()
+    : options.framework;
+
+  if (!framework) {
+    console.error('❌ Could not detect framework. Please specify with --framework');
+    process.exit(1);
+  }
+
+  console.log(`📦 Framework: ${framework}\n`);
+
+  // Import migration generator
+  const { generateMigrations, validateMigrations } = await import('./generators/generate-migrations.js');
+  
+  const cwd = process.cwd();
+  const backendDir = fs.existsSync(path.join(cwd, 'backend')) 
+    ? path.join(cwd, 'backend')
+    : cwd;
+
+  // Validate migrations before generating
+  console.log('🔍 Validating migrations...');
+  const validationResult = await validateMigrations(framework);
+  if (!validationResult.valid) {
+    console.error(`❌ Migration validation failed:\n${validationResult.errors.join('\n')}\n`);
+    process.exit(1);
+  }
+  console.log('✅ Migration validation passed\n');
+
+  // Generate migrations
+  console.log('🗄️  Generating database migrations...');
+  const migrationFiles = await generateMigrations({
+    framework,
+    outputDir: backendDir,
+  });
+  
+  console.log(`✅ Migrations generated:\n`);
+  migrationFiles.forEach(file => console.log(`   ${file}`));
+  console.log('\n📋 Next steps:');
+  console.log('   1. Review the generated migration files');
+  console.log('   2. Run migrations: python manage.py migrate (Django) or supabase db push (Supabase)');
+  console.log('   3. Install code: npx echelon install --no-migrations\n');
+}
+
+
 async function promptEnvironment(): Promise<Environment> {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -208,6 +457,10 @@ export function runCli(argv = process.argv): void {
     .option('--cia-service-key <key>', 'Service key for Repo C')
     .option('--cia-anon-key <key>', 'Supabase anon key for Repo C')
     .option('--skip-registration', 'Skip kernel registration')
+    .option('--base-path <path>', 'Base path for endpoint (default: /api/manage)')
+    .option('--no-migrations', 'Code-only install (skip migration generation)')
+    .option('--migrations-only', 'Generate migrations only (skip code installation)')
+    .option('--dry-run', 'Show what would be generated (no writes)')
     .action(async (opts) => {
       const options: InstallOptions = {
         framework: opts.framework as InstallOptions['framework'],
@@ -220,6 +473,10 @@ export function runCli(argv = process.argv): void {
         ciaServiceKey: opts.ciaServiceKey,
         ciaAnonKey: opts.ciaAnonKey,
         skipRegistration: opts.skipRegistration,
+        basePath: opts.basePath,
+        noMigrations: opts.noMigrations,
+        migrationsOnly: opts.migrationsOnly,
+        dryRun: opts.dryRun,
       };
       try {
         await install(options);

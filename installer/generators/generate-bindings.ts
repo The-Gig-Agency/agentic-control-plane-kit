@@ -10,17 +10,20 @@ export interface BindingsGenerationOptions {
   outputDir: string;
   integration: string;
   kernelId: string;
+  basePath?: string;  // Base path for endpoint (default: /api/manage)
   tenantTable?: string;
   apiKeyTable?: string;
   apiKeyPrefix?: string;
 }
 
 export async function generateBindings(options: BindingsGenerationOptions): Promise<string> {
-  const { framework, outputDir, integration, kernelId, tenantTable, apiKeyTable, apiKeyPrefix } = options;
+  const { framework, outputDir, integration, kernelId, basePath, tenantTable, apiKeyTable, apiKeyPrefix } = options;
 
   const bindings = {
     kernelId,
     integration,
+    base_path: basePath || '/api/manage',  // Include base path in bindings
+    endpoint_path: basePath || '/api/manage',  // Full endpoint path
     tenant: {
       table: tenantTable || 'tenants',
       id_column: 'id',
@@ -48,6 +51,8 @@ def get_bindings():
     return {
         'kernelId': os.environ.get('KERNEL_ID', '${kernelId}'),
         'integration': '${integration}',
+        'base_path': '${bindings.base_path}',
+        'endpoint_path': '${bindings.endpoint_path}',
         'tenant': {
             'table': '${bindings.tenant.table}',
             'id_column': '${bindings.tenant.id_column}',
