@@ -94,7 +94,19 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
   }
 
   if (options?.json) {
-    console.log(JSON.stringify(result, null, 2));
+    // Machine-readable format for directory/verifier (camelCase + snake_case)
+    const json = {
+      kernelInstalled: result.acp_kernel === 'installed',
+      kernelId: result.kernel_id,
+      bindingsValid: result.bindings === 'valid',
+      packs: result.packs,
+      governanceHubConnected: result.governance_hub === 'connected',
+      auditAdapterPresent: result.audit_adapter === 'present',
+      manifestPresent: result.manifest_present,
+      ...(result.hint && { hint: result.hint }),
+      ...(result.governance_hub_probe && { governanceHubProbe: result.governance_hub_probe }),
+    };
+    console.log(JSON.stringify(json, null, 2));
     return result;
   }
 
