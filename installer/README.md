@@ -2,6 +2,8 @@
 
 Automated installer for embedding the Agentic Control Plane kernel into SaaS applications.
 
+---
+
 ## Architecture
 
 The installer is **completely separate** from the kernel. This preserves kernel purity:
@@ -20,6 +22,8 @@ agentic-control-plane-kit/
     └─ echelon.ts
 ```
 
+---
+
 ## Critical Rule: Kernel Purity
 
 **The kernel must never know about the installer.**
@@ -29,9 +33,12 @@ agentic-control-plane-kit/
 - They are completely decoupled
 
 This ensures:
+
 - Kernel remains framework-agnostic
 - Kernel can be used without installer
 - Installer can evolve independently
+
+---
 
 ## Usage
 
@@ -50,15 +57,19 @@ npx echelon install --framework express --kernel-id my-kernel
 tsx installer/cli.ts install --framework django
 ```
 
+---
+
 ## What the Installer Does
 
-1. **Detects Framework** - Auto-detects Django, Express, or Supabase
-2. **Copies Kernel** - Copies kernel source into target project
-3. **Generates Adapters** - Creates framework-specific adapter implementations
-4. **Generates Endpoint** - Creates `/api/manage` endpoint wrapper
-5. **Generates Bindings** - Creates bindings configuration
-6. **Generates Migrations** - Creates database migration files
-7. **Registers Kernel** - Optionally registers with Governance Hub (Repo B)
+1. **Detects Framework** — Auto-detects Django, Express, or Supabase
+2. **Copies Kernel** — Copies kernel source into target project
+3. **Generates Adapters** — Creates framework-specific adapter implementations
+4. **Generates Endpoint** — Creates `/api/manage` endpoint wrapper
+5. **Generates Bindings** — Creates bindings configuration
+6. **Generates Migrations** — Creates database migration files
+7. **Registers Kernel** — Optionally registers with Governance Hub (Repo B)
+
+---
 
 ## Framework Support
 
@@ -86,6 +97,8 @@ tsx installer/cli.ts install --framework django
 - Generates SQL migrations
 - Configures Supabase project
 
+---
+
 ## Installation Flow
 
 ```
@@ -110,6 +123,8 @@ User sets environment variables
 User tests /api/manage endpoint
 ```
 
+---
+
 ## Extending the Installer
 
 To add support for a new framework:
@@ -119,19 +134,24 @@ To add support for a new framework:
 3. **Add installer** in `installers/{framework}-installer.ts`
 4. **Update CLI** to handle new framework
 
-The kernel remains unchanged - it's framework-agnostic.
+The kernel remains unchanged — it's framework-agnostic.
+
+---
 
 ## Testing & Validation
 
 Before offering to clients, validate the installer:
 
 ### Quick Validation (20 minutes)
+
 See [QUICK-VALIDATION.md](./QUICK-VALIDATION.md) for a fast pre-release checklist.
 
 ### Comprehensive Validation
+
 See [VALIDATION-PLAN.md](./VALIDATION-PLAN.md) for full test strategy.
 
 ### Automated Tests
+
 ```bash
 # Run automated validation
 npm run validate:installer
@@ -143,6 +163,7 @@ npm run validate:installer:supabase
 ```
 
 ### Manual Testing
+
 ```bash
 # Test installer locally
 cd /path/to/test-saas
@@ -150,6 +171,8 @@ tsx ../agentic-control-plane-kit/installer/cli.ts install --framework django
 ```
 
 See [test/validate-manual.md](./test/validate-manual.md) for detailed manual test procedures.
+
+---
 
 ## Publishing
 

@@ -6,6 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import type { InstallOptions, Environment } from '../cli.js';
 import { generateAdapters } from '../generators/generate-adapters.js';
 import { generateEndpoint } from '../generators/generate-endpoint.js';
@@ -103,7 +104,7 @@ export async function installDjango(options: InstallOptions & { env?: Environmen
 }
 
 async function copyKernel(targetDir: string, kernelType: 'typescript' | 'python'): Promise<void> {
-  const installerDir = path.dirname(new URL(import.meta.url).pathname);
+  const installerDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(installerDir, '../..');
   
   if (kernelType === 'python') {

@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 /**
  * Echelon CLI - Agentic Control Plane Installer
- * 
+ *
  * Automates embedding the kernel into SaaS applications.
- * 
- * Usage:
- *   npx echelon install
- *   npx echelon install --env development
- *   npx echelon uninstall
- *   npx echelon doctor
- *   npx echelon status
+ * Uses commander for argument parsing, validation, and help.
  */
 
+import { Command } from 'commander';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { detectFramework } from './detect/index.js';
 import { installDjango } from './installers/django-installer.js';
 import { installExpress } from './installers/express-installer.js';
@@ -41,9 +38,9 @@ export interface InstallOptions {
 export async function install(options: InstallOptions = {}): Promise<void> {
   console.log('🚀 Echelon: Agentic Control Plane Installer\n');
 
-  // Prompt for environment if not specified
+  // Prompt for environment if not specified (skip in CI/non-TTY)
   let env: Environment = options.env || 'development';
-  if (!options.env) {
+  if (!options.env && process.stdin.isTTY) {
     env = await promptEnvironment();
   }
 
@@ -187,104 +184,94 @@ async function promptEnvironment(): Promise<Environment> {
   });
 }
 
-// CLI entrypoint
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = process.argv.slice(2);
-  const command = args[0];
+/**
+ * Run the CLI (used by both installer/cli.ts and cli/echelon.ts)
+ */
+export function runCli(argv = process.argv): void {
+  const program = new Command();
 
-  if (command === 'install') {
-    const options: InstallOptions = {};
+  program
+    .name('echelon')
+    .description('Agentic Control Plane Installer')
+    .version('0.1.0');
 
-    // Parse CLI arguments
-    for (let i = 1; i < args.length; i++) {
-      const arg = args[i];
-      switch (arg) {
-        case '--framework':
-          options.framework = args[++i] as any;
-          break;
-        case '--env':
-          options.env = args[++i] as Environment;
-          break;
-        case '--kernel-id':
-          options.kernelId = args[++i];
-          break;
-        case '--integration':
-          options.integration = args[++i];
-          break;
-        case '--governance-hub-url':
-          options.governanceHubUrl = args[++i];
-          break;
-        case '--kernel-api-key':
-          options.kernelApiKey = args[++i];
-          break;
-        case '--cia-url':
-          options.ciaUrl = args[++i];
-          break;
-        case '--cia-service-key':
-          options.ciaServiceKey = args[++i];
-          break;
-        case '--cia-anon-key':
-          options.ciaAnonKey = args[++i];
-          break;
-        case '--skip-registration':
-          options.skipRegistration = true;
-          break;
+  program
+    .command('install')
+    .description('Install control plane (safe, reversible in dev mode)')
+    .option('-f, --framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('-e, --env <env>', 'Environment (development|staging|production)', 'development')
+    .option('--kernel-id <id>', 'Kernel ID (auto-generated in dev)')
+    .option('--integration <name>', 'Integration name')
+    .option('--governance-hub-url <url>', 'Governance Hub URL (Repo B)')
+    .option('--kernel-api-key <key>', 'Kernel API key for Repo B')
+    .option('--cia-url <url>', 'Key Vault Executor URL (Repo C)')
+    .option('--cia-service-key <key>', 'Service key for Repo C')
+    .option('--cia-anon-key <key>', 'Supabase anon key for Repo C')
+    .option('--skip-registration', 'Skip kernel registration')
+    .action(async (opts) => {
+      const options: InstallOptions = {
+        framework: opts.framework as InstallOptions['framework'],
+        env: opts.env as Environment,
+        kernelId: opts.kernelId,
+        integration: opts.integration,
+        governanceHubUrl: opts.governanceHubUrl,
+        kernelApiKey: opts.kernelApiKey,
+        ciaUrl: opts.ciaUrl,
+        ciaServiceKey: opts.ciaServiceKey,
+        ciaAnonKey: opts.ciaAnonKey,
+        skipRegistration: opts.skipRegistration,
+      };
+      try {
+        await install(options);
+      } catch (error) {
+        console.error('❌ Installation failed:', error);
+        process.exit(1);
       }
-    }
-
-    install(options).catch((error) => {
-      console.error('❌ Installation failed:', error);
-      process.exit(1);
     });
-  } else if (command === 'uninstall') {
-    uninstall().catch((error) => {
-      console.error('❌ Uninstall failed:', error);
-      process.exit(1);
+
+  program
+    .command('uninstall')
+    .description('Remove control plane installation')
+    .action(async () => {
+      try {
+        await uninstall();
+      } catch (error) {
+        console.error('❌ Uninstall failed:', error);
+        process.exit(1);
+      }
     });
-  } else if (command === 'doctor') {
-    doctor().catch((error) => {
-      console.error('❌ Doctor check failed:', error);
-      process.exit(1);
+
+  program
+    .command('doctor')
+    .description('Check installation health')
+    .option('--json', 'Output machine-readable JSON')
+    .option('--probe', 'Probe Governance Hub connectivity')
+    .action(async (opts) => {
+      try {
+        await doctor({ json: opts.json, probe: opts.probe });
+      } catch (error) {
+        console.error('❌ Doctor check failed:', error);
+        process.exit(1);
+      }
     });
-  } else if (command === 'status') {
-    status().catch((error) => {
-      console.error('❌ Status check failed:', error);
-      process.exit(1);
+
+  program
+    .command('status')
+    .description('Show current installation status')
+    .action(async () => {
+      try {
+        await status();
+      } catch (error) {
+        console.error('❌ Status check failed:', error);
+        process.exit(1);
+      }
     });
-  } else {
-    console.log(`
-Echelon - Agentic Control Plane Installer
 
-Commands:
-  install     Install control plane (safe, reversible in dev mode)
-  uninstall   Remove control plane installation
-  doctor      Check installation health
-  status      Show current installation status
+  program.parse(argv);
+}
 
-Usage:
-  npx echelon install [options]
-  npx echelon uninstall
-  npx echelon doctor
-  npx echelon status
-
-Install Options:
-  --framework <django|express|supabase|auto>  Framework (default: auto-detect)
-  --env <development|staging|production>       Environment (default: development)
-  --kernel-id <id>                            Kernel ID (auto-generated in dev)
-  --integration <name>                        Integration name
-  --governance-hub-url <url>                  Governance Hub URL (Repo B)
-  --kernel-api-key <key>                      Kernel API key for Repo B
-  --cia-url <url>                             Key Vault Executor URL (Repo C)
-  --cia-service-key <key>                     Service key for Repo C
-  --cia-anon-key <key>                        Supabase anon key for Repo C
-  --skip-registration                         Skip kernel registration
-
-Examples:
-  npx echelon install
-  npx echelon install --env development
-  npx echelon install --framework django --env staging
-  npx echelon uninstall
-    `);
-    process.exit(0);
-  }
+// CLI entrypoint when run directly (cross-platform)
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] && resolve(process.argv[1]) === resolve(__filename)) {
+  runCli();
 }

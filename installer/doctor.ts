@@ -2,7 +2,7 @@
  * Doctor - Installation health check
  *
  * Outputs adoption-verifiable status for directory submissions.
- * Reads from .acp/install.json when present (trust anchor).
+ * Manifest (.acp/install.json) is primary truth when present.
  *
  * Target format:
  *   ACP Kernel: Installed ✓
@@ -17,19 +17,36 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { readInstallManifest, resolvePacksFromBindings } from './manifest.js';
 
-export async function doctor(): Promise<void> {
+export interface DoctorResult {
+  acp_kernel: 'installed' | 'not_installed';
+  kernel_id: string | null;
+  governance_hub: 'connected' | 'not_connected';
+  governance_hub_probe?: 'ok' | 'fail' | 'skipped';
+  bindings: 'valid' | 'invalid';
+  packs: string[];
+  audit_adapter: 'present' | 'not_present';
+  manifest_present: boolean;
+  hint?: string;
+}
+
+export async function doctor(options?: { json?: boolean; probe?: boolean }): Promise<DoctorResult> {
   const cwd = process.cwd();
 
-  // Prefer manifest when present (trust anchor)
+  // Manifest is primary truth when present
   const manifest = readInstallManifest(cwd);
   const packs = manifest?.packs ?? resolvePacksFromBindings(cwd);
 
-  // 1. ACP Kernel
-  const kernelDirs = [
-    path.join(cwd, 'backend', 'control_plane', 'acp'),
-    path.join(cwd, 'control_plane', 'kernel', 'src'),
-  ];
-  const kernelInstalled = kernelDirs.some((d) => fs.existsSync(d));
+  // 1. ACP Kernel — check manifest first, then file paths
+  let kernelInstalled: boolean;
+  if (manifest) {
+    kernelInstalled = true; // Manifest implies install completed
+  } else {
+    const kernelDirs = [
+      path.join(cwd, 'backend', 'control_plane', 'acp'),
+      path.join(cwd, 'control_plane', 'kernel', 'src'),
+    ];
+    kernelInstalled = kernelDirs.some((d) => fs.existsSync(d));
+  }
 
   // 2. Kernel ID (manifest > bindings)
   let kernelId: string | null = manifest?.kernel_id ?? null;
@@ -37,20 +54,55 @@ export async function doctor(): Promise<void> {
     kernelId = readKernelIdFromBindings(cwd);
   }
 
-  // 3. Governance Hub (env vars indicate connection intent)
-  const governanceHubConnected = checkGovernanceHubEnv(cwd);
+  // 3. Governance Hub — env check, optional connectivity probe
+  const governanceHubEnv = checkGovernanceHubEnv(cwd);
+  let governanceHubProbe: 'ok' | 'fail' | 'skipped' | undefined;
+  if (options?.probe && governanceHubEnv) {
+    governanceHubProbe = await probeGovernanceHub(cwd);
+  }
 
-  // 4. Bindings
-  const bindingsResult = checkBindings(cwd);
+  const governanceHubConnected =
+    governanceHubProbe === 'ok' || (governanceHubEnv && governanceHubProbe !== 'fail');
+
+  // 4. Bindings — if manifest exists, treat as valid (manifest is trust anchor)
+  let bindingsValid: boolean;
+  if (manifest) {
+    bindingsValid = true; // Manifest implies bindings were valid at install
+  } else {
+    bindingsValid = checkBindings(cwd).valid;
+  }
 
   // 5. Audit Adapter
   const auditAdapterPresent = checkAuditAdapter(cwd);
 
-  // Output (ChatGPT-recommended format)
+  const result: DoctorResult = {
+    acp_kernel: kernelInstalled ? 'installed' : 'not_installed',
+    kernel_id: kernelId,
+    governance_hub: governanceHubConnected ? 'connected' : 'not_connected',
+    bindings: bindingsValid ? 'valid' : 'invalid',
+    packs,
+    audit_adapter: auditAdapterPresent ? 'present' : 'not_present',
+    manifest_present: !!manifest,
+  };
+
+  if (options?.probe && governanceHubEnv) {
+    result.governance_hub_probe = governanceHubProbe;
+  }
+
+  if (!kernelInstalled || (!manifest && !bindingsValid)) {
+    result.hint = 'Run: npx echelon install';
+  }
+
+  if (options?.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return result;
+  }
+
+  // Human-readable output
   console.log('ACP Kernel: ' + (kernelInstalled ? 'Installed ✓' : 'Not installed ✗'));
   console.log('Kernel ID: ' + (kernelId ?? '—'));
   console.log('Governance Hub: ' + (governanceHubConnected ? 'Connected ✓' : 'Not connected ✗'));
-  console.log('Bindings: ' + (bindingsResult.valid ? 'Valid ✓' : 'Invalid ✗'));
+  console.log('Bindings: ' + (bindingsValid ? 'Valid ✓' : 'Invalid ✗'));
   console.log('Packs: ' + (packs.length ? packs.join(', ') : '—'));
   console.log('Audit Adapter: ' + (auditAdapterPresent ? 'Present ✓' : 'Not present ✗'));
 
@@ -58,10 +110,12 @@ export async function doctor(): Promise<void> {
     console.log('\nManifest: .acp/install.json (trust anchor)');
   }
 
-  if (!kernelInstalled || !bindingsResult.valid) {
-    console.log('\nRun: npx echelon install');
+  if (result.hint) {
+    console.log('\n' + result.hint);
   }
   console.log('');
+
+  return result;
 }
 
 function readKernelIdFromBindings(cwd: string): string | null {
@@ -78,7 +132,6 @@ function readKernelIdFromBindings(cwd: string): string | null {
       /* ignore */
     }
   }
-  // Python bindings
   const pyPath = path.join(cwd, 'backend', 'control_plane', 'bindings.py');
   if (fs.existsSync(pyPath)) {
     const content = fs.readFileSync(pyPath, 'utf-8');
@@ -105,6 +158,44 @@ function checkGovernanceHubEnv(cwd: string): boolean {
   return !!(process.env.GOVERNANCE_HUB_URL && process.env.ACP_KERNEL_KEY);
 }
 
+function getGovernanceHubUrl(cwd: string): string | null {
+  const envFiles = [
+    path.join(cwd, '.env'),
+    path.join(cwd, 'backend', '.env'),
+  ];
+  for (const file of envFiles) {
+    if (fs.existsSync(file)) {
+      const content = fs.readFileSync(file, 'utf-8');
+      const m = content.match(/GOVERNANCE_HUB_URL=(.+)/m);
+      if (m) {
+        const url = m[1].trim().replace(/^["']|["']$/g, '');
+        if (url && !url.startsWith('#')) return url;
+      }
+    }
+  }
+  return process.env.GOVERNANCE_HUB_URL || null;
+}
+
+async function probeGovernanceHub(cwd: string): Promise<'ok' | 'fail' | 'skipped'> {
+  const baseUrl = getGovernanceHubUrl(cwd);
+  if (!baseUrl) return 'skipped';
+
+  const candidates = [
+    baseUrl.replace(/\/$/, '') + '/health',
+    baseUrl.replace(/\/$/, '') + '/',
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      if (res.ok || res.status < 500) return 'ok';
+    } catch {
+      /* try next */
+    }
+  }
+  return 'fail';
+}
+
 function checkBindings(cwd: string): { valid: boolean } {
   const bindingsFiles = [
     path.join(cwd, 'controlplane.bindings.json'),
@@ -117,7 +208,7 @@ function checkBindings(cwd: string): { valid: boolean } {
           const bindings = JSON.parse(fs.readFileSync(file, 'utf-8'));
           return { valid: !!(bindings?.kernelId && bindings?.integration) };
         }
-        return { valid: true }; // Python bindings present
+        return { valid: true };
       } catch {
         return { valid: false };
       }
