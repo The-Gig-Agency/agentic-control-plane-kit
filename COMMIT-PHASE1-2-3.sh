@@ -3,6 +3,9 @@
 
 cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
 
+echo "📥 Pulling latest changes..."
+git pull
+
 echo "📋 Staging all changes..."
 git add -A
 
