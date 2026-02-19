@@ -45,6 +45,14 @@ export async function uninstall(): Promise<void> {
     }
   }
 
+  // Remove install manifest
+  const acpDir = path.join(cwd, '.acp');
+  if (fs.existsSync(acpDir)) {
+    console.log(`  Removing ${acpDir}...`);
+    fs.rmSync(acpDir, { recursive: true, force: true });
+    removedCount++;
+  }
+
   // Remove bindings file
   const bindingsFiles = [
     path.join(cwd, 'controlplane.bindings.json'),

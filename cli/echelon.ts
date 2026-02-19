@@ -64,6 +64,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error('❌ Installation failed:', error);
       process.exit(1);
     });
+  } else if (args[0] === 'doctor') {
+    doctor().catch((error) => {
+      console.error('❌ Doctor check failed:', error);
+      process.exit(1);
+    });
+  } else if (args[0] === 'uninstall') {
+    uninstall().catch((error) => {
+      console.error('❌ Uninstall failed:', error);
+      process.exit(1);
+    });
+  } else if (args[0] === 'status') {
+    status().catch((error) => {
+      console.error('❌ Status check failed:', error);
+      process.exit(1);
+    });
   } else {
     console.log(`
 Echelon - Agentic Control Plane Installer

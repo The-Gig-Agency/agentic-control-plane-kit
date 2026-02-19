@@ -20,6 +20,7 @@ import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
 import { status } from './status.js';
+import { writeInstallManifest, getKernelVersion, resolvePacksFromBindings } from './manifest.js';
 import readline from 'node:readline';
 
 export type Environment = 'development' | 'staging' | 'production';
@@ -120,6 +121,18 @@ export async function install(options: InstallOptions = {}): Promise<void> {
     console.log('\n💡 Development mode: Skipping kernel registration');
     console.log('   You can register manually later or use production environment.\n');
   }
+
+  // Emit machine-readable install manifest (.acp/install.json)
+  const projectRoot = process.cwd();
+  const packs = resolvePacksFromBindings(projectRoot);
+  writeInstallManifest(projectRoot, {
+    kernel_version: getKernelVersion(),
+    kernel_id: installResult.kernelId,
+    installed_at: new Date().toISOString(),
+    framework,
+    packs,
+  });
+  console.log('📋 Install manifest written to .acp/install.json\n');
 
   console.log('✅ Installation complete!\n');
   

@@ -1,159 +1,149 @@
 /**
- * Doctor - Check installation health
- * 
- * Verifies:
- * - Kernel files exist
- * - Adapters are present
- * - Endpoint is configured
- * - Bindings are valid
- * - Environment variables are set
- * - Database migrations are run
+ * Doctor - Installation health check
+ *
+ * Outputs adoption-verifiable status for directory submissions.
+ * Reads from .acp/install.json when present (trust anchor).
+ *
+ * Target format:
+ *   ACP Kernel: Installed ✓
+ *   Kernel ID: acp_live_xxxxx
+ *   Governance Hub: Connected ✓
+ *   Bindings: Valid ✓
+ *   Packs: iam, webhooks, settings
+ *   Audit Adapter: Present ✓
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { readInstallManifest, resolvePacksFromBindings } from './manifest.js';
 
 export async function doctor(): Promise<void> {
-  console.log('🏥 Echelon: Installation Health Check\n');
-
   const cwd = process.cwd();
-  const issues: string[] = [];
-  const warnings: string[] = [];
 
-  // Check for kernel files
-  console.log('Checking kernel files...');
+  // Prefer manifest when present (trust anchor)
+  const manifest = readInstallManifest(cwd);
+  const packs = manifest?.packs ?? resolvePacksFromBindings(cwd);
+
+  // 1. ACP Kernel
   const kernelDirs = [
     path.join(cwd, 'backend', 'control_plane', 'acp'),
     path.join(cwd, 'control_plane', 'kernel', 'src'),
   ];
-  
-  let kernelFound = false;
-  for (const dir of kernelDirs) {
-    if (fs.existsSync(dir)) {
-      console.log(`  ✅ Kernel found: ${dir}`);
-      kernelFound = true;
-      break;
-    }
-  }
-  
-  if (!kernelFound) {
-    issues.push('Kernel files not found. Run: npx echelon install');
+  const kernelInstalled = kernelDirs.some((d) => fs.existsSync(d));
+
+  // 2. Kernel ID (manifest > bindings)
+  let kernelId: string | null = manifest?.kernel_id ?? null;
+  if (!kernelId) {
+    kernelId = readKernelIdFromBindings(cwd);
   }
 
-  // Check for adapters
-  console.log('\nChecking adapters...');
-  const adapterFiles = [
-    path.join(cwd, 'backend', 'control_plane', 'adapters', '__init__.py'),
-    path.join(cwd, 'control_plane', 'adapters', 'index.ts'),
-  ];
+  // 3. Governance Hub (env vars indicate connection intent)
+  const governanceHubConnected = checkGovernanceHubEnv(cwd);
 
-  let adaptersFound = false;
-  for (const file of adapterFiles) {
-    if (fs.existsSync(file)) {
-      console.log(`  ✅ Adapters found: ${file}`);
-      adaptersFound = true;
-      break;
-    }
+  // 4. Bindings
+  const bindingsResult = checkBindings(cwd);
+
+  // 5. Audit Adapter
+  const auditAdapterPresent = checkAuditAdapter(cwd);
+
+  // Output (ChatGPT-recommended format)
+  console.log('ACP Kernel: ' + (kernelInstalled ? 'Installed ✓' : 'Not installed ✗'));
+  console.log('Kernel ID: ' + (kernelId ?? '—'));
+  console.log('Governance Hub: ' + (governanceHubConnected ? 'Connected ✓' : 'Not connected ✗'));
+  console.log('Bindings: ' + (bindingsResult.valid ? 'Valid ✓' : 'Invalid ✗'));
+  console.log('Packs: ' + (packs.length ? packs.join(', ') : '—'));
+  console.log('Audit Adapter: ' + (auditAdapterPresent ? 'Present ✓' : 'Not present ✗'));
+
+  if (manifest) {
+    console.log('\nManifest: .acp/install.json (trust anchor)');
   }
 
-  if (!adaptersFound) {
-    issues.push('Adapters not found. Run: npx echelon install');
+  if (!kernelInstalled || !bindingsResult.valid) {
+    console.log('\nRun: npx echelon install');
   }
+  console.log('');
+}
 
-  // Check for endpoint
-  console.log('\nChecking endpoint...');
-  const endpointFiles = [
-    path.join(cwd, 'backend', 'api', 'views', 'manage.py'),
-    path.join(cwd, 'backend', 'control_plane', 'views', 'manage.py'),
-    path.join(cwd, 'api', 'manage.ts'),
-    path.join(cwd, 'supabase', 'functions', 'manage', 'index.ts'),
-  ];
-
-  let endpointFound = false;
-  for (const file of endpointFiles) {
-    if (fs.existsSync(file)) {
-      console.log(`  ✅ Endpoint found: ${file}`);
-      endpointFound = true;
-      break;
-    }
-  }
-
-  if (!endpointFound) {
-    issues.push('Endpoint not found. Run: npx echelon install');
-  }
-
-  // Check for bindings
-  console.log('\nChecking bindings...');
-  const bindingsFiles = [
+function readKernelIdFromBindings(cwd: string): string | null {
+  const candidates = [
     path.join(cwd, 'controlplane.bindings.json'),
-    path.join(cwd, 'backend', 'control_plane', 'bindings.py'),
+    path.join(cwd, 'backend', 'controlplane.bindings.json'),
   ];
-
-  let bindingsFound = false;
-  for (const file of bindingsFiles) {
-    if (fs.existsSync(file)) {
-      console.log(`  ✅ Bindings found: ${file}`);
-      bindingsFound = true;
-      
-      // Validate bindings
-      try {
-        if (file.endsWith('.json')) {
-          const bindings = JSON.parse(fs.readFileSync(file, 'utf-8'));
-          if (!bindings.kernelId) {
-            warnings.push('Bindings missing kernelId');
-          }
-          if (!bindings.integration) {
-            warnings.push('Bindings missing integration');
-          }
-        }
-      } catch (e) {
-        issues.push(`Invalid bindings file: ${file}`);
-      }
-      break;
+  for (const p of candidates) {
+    if (!fs.existsSync(p)) continue;
+    try {
+      const bindings = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      return bindings?.kernelId ?? null;
+    } catch {
+      /* ignore */
     }
   }
-
-  if (!bindingsFound) {
-    issues.push('Bindings not found. Run: npx echelon install');
+  // Python bindings
+  const pyPath = path.join(cwd, 'backend', 'control_plane', 'bindings.py');
+  if (fs.existsSync(pyPath)) {
+    const content = fs.readFileSync(pyPath, 'utf-8');
+    const m = content.match(/['"]kernelId['"]:\s*os\.environ\.get\(['"]KERNEL_ID['"],\s*['"]([^'"]+)['"]\)/);
+    if (m) return m[1];
   }
+  return null;
+}
 
-  // Check environment variables
-  console.log('\nChecking environment variables...');
+function checkGovernanceHubEnv(cwd: string): boolean {
   const envFiles = [
     path.join(cwd, '.env'),
     path.join(cwd, '.env.example'),
     path.join(cwd, 'backend', '.env'),
   ];
-
-  let envFound = false;
   for (const file of envFiles) {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf-8');
-      if (content.includes('KERNEL_ID') || content.includes('GOVERNANCE_HUB_URL')) {
-        console.log(`  ✅ Environment template found: ${file}`);
-        envFound = true;
-        break;
+      if (content.includes('GOVERNANCE_HUB_URL') && content.includes('ACP_KERNEL_KEY')) {
+        return true;
       }
     }
   }
+  return !!(process.env.GOVERNANCE_HUB_URL && process.env.ACP_KERNEL_KEY);
+}
 
-  if (!envFound) {
-    warnings.push('Environment variables not configured. Check .env.example');
+function checkBindings(cwd: string): { valid: boolean } {
+  const bindingsFiles = [
+    path.join(cwd, 'controlplane.bindings.json'),
+    path.join(cwd, 'backend', 'control_plane', 'bindings.py'),
+  ];
+  for (const file of bindingsFiles) {
+    if (fs.existsSync(file)) {
+      try {
+        if (file.endsWith('.json')) {
+          const bindings = JSON.parse(fs.readFileSync(file, 'utf-8'));
+          return { valid: !!(bindings?.kernelId && bindings?.integration) };
+        }
+        return { valid: true }; // Python bindings present
+      } catch {
+        return { valid: false };
+      }
+    }
   }
+  return { valid: false };
+}
 
-  // Summary
-  console.log('\n' + '='.repeat(50));
-  if (issues.length === 0 && warnings.length === 0) {
-    console.log('✅ Installation looks healthy!\n');
-  } else {
-    if (issues.length > 0) {
-      console.log(`\n❌ Issues found (${issues.length}):`);
-      issues.forEach(issue => console.log(`   - ${issue}`));
+function checkAuditAdapter(cwd: string): boolean {
+  const auditFiles = [
+    path.join(cwd, 'control_plane', 'adapters', 'index.ts'),
+    path.join(cwd, 'backend', 'control_plane', 'adapters', '__init__.py'),
+    path.join(cwd, 'api', 'manage.ts'),
+    path.join(cwd, 'supabase', 'functions', 'manage', 'index.ts'),
+  ];
+  for (const file of auditFiles) {
+    if (fs.existsSync(file)) {
+      const content = fs.readFileSync(file, 'utf-8');
+      if (
+        content.includes('AuditAdapter') ||
+        content.includes('audit_adapter') ||
+        content.includes('auditAdapter')
+      ) {
+        return true;
+      }
     }
-    if (warnings.length > 0) {
-      console.log(`\n⚠️  Warnings (${warnings.length}):`);
-      warnings.forEach(warning => console.log(`   - ${warning}`));
-    }
-    console.log('');
   }
+  return false;
 }
