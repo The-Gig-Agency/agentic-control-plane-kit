@@ -31,16 +31,41 @@ async function ensureInitialized(): Promise<void> {
 }
 
 /**
+ * Get CORS headers based on allowed origins
+ */
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
+  const defaultOrigin = Deno.env.get('DEFAULT_CORS_ORIGIN') || 'https://echelon.com';
+  
+  // If no origin header, use default
+  if (!origin) {
+    return {
+      'Access-Control-Allow-Origin': defaultOrigin,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+      'Access-Control-Allow-Credentials': 'true',
+    };
+  }
+  
+  // Check if origin is allowed
+  const isAllowed = allowedOrigins.length === 0 || allowedOrigins.includes(origin);
+  const allowOrigin = isAllowed ? origin : defaultOrigin;
+  
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+/**
  * Handle HTTP request
  */
 async function handleHttpRequest(req: Request): Promise<Response> {
   try {
-    // CORS headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
-    };
+    const origin = req.headers.get('Origin');
+    const corsHeaders = getCorsHeaders(origin);
 
     // Handle OPTIONS (CORS preflight)
     if (req.method === 'OPTIONS') {
@@ -57,13 +82,12 @@ async function handleHttpRequest(req: Request): Promise<Response> {
       });
     }
 
-    // Extract API key from headers
-    const apiKey = req.headers.get('X-API-Key') || 
-                   url.searchParams.get('api_key');
+    // Extract API key from headers only (SECURITY: query params can leak in logs)
+    const apiKey = req.headers.get('X-API-Key');
 
     if (!apiKey) {
       return new Response(JSON.stringify({
-        error: 'X-API-Key header or api_key query parameter required',
+        error: 'X-API-Key header required',
       }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,11 +119,52 @@ async function handleHttpRequest(req: Request): Promise<Response> {
         });
       }
 
-      // Parse MCP request
+      // Parse and validate MCP request
       let mcpRequest: MCPRequest;
       try {
-        mcpRequest = await req.json();
+        const rawRequest = await req.json();
+        
+        // Validate JSON-RPC 2.0 structure
+        if (!rawRequest || typeof rawRequest !== 'object') {
+          throw new ValidationError('Request must be a JSON object');
+        }
+        
+        if (rawRequest.jsonrpc !== '2.0') {
+          throw new ValidationError('jsonrpc must be "2.0"');
+        }
+        
+        if (!rawRequest.method || typeof rawRequest.method !== 'string') {
+          throw new ValidationError('method is required and must be a string');
+        }
+        
+        // Validate params if present
+        if (rawRequest.params !== undefined && typeof rawRequest.params !== 'object') {
+          throw new ValidationError('params must be an object if provided');
+        }
+        
+        // Enforce request size limit (1MB)
+        const requestSize = new TextEncoder().encode(JSON.stringify(rawRequest)).length;
+        if (requestSize > 1024 * 1024) {
+          throw new ValidationError('Request body too large (max 1MB)');
+        }
+        
+        mcpRequest = rawRequest as MCPRequest;
       } catch (error) {
+        if (error instanceof ValidationError) {
+          return new Response(JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+              code: -32602,
+              message: 'Invalid params',
+              data: error.message,
+            },
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
           id: null,
@@ -164,14 +229,16 @@ async function handleHttpRequest(req: Request): Promise<Response> {
   } catch (error) {
     console.error('[HTTP] Error handling request:', error);
     
+    const origin = req.headers.get('Origin');
+    const corsHeaders = getCorsHeaders(origin);
+    
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
     }), {
       status: 500,
       headers: {
+        ...corsHeaders,
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
     });
   }
