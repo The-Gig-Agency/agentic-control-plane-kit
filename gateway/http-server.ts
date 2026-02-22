@@ -61,8 +61,10 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 /**
  * Handle HTTP request
+ * 
+ * Exported for use by Vercel serverless functions
  */
-async function handleHttpRequest(req: Request): Promise<Response> {
+export async function handleHttpRequest(req: Request): Promise<Response> {
   try {
     const origin = req.headers.get('Origin');
     const corsHeaders = getCorsHeaders(origin);
@@ -75,9 +77,34 @@ async function handleHttpRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // Health check
+    // Health check (public)
     if (path === '/health' && req.method === 'GET') {
       return new Response(JSON.stringify({ status: 'ok' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Discovery endpoint (public, no API key required)
+    if (path === '/meta.discover' && req.method === 'GET') {
+      // Import discovery handler
+      const { getDiscoveryInfo } = await import('./discovery.ts');
+      const { loadConfig } = await import('./config.ts');
+      const { ProcessManager } = await import('./process-manager.ts');
+      
+      const config = loadConfig();
+      const processManager = new ProcessManager();
+      
+      const discoveryInfo = await getDiscoveryInfo(
+        config,
+        processManager,
+        'https://www.buyechelon.com/consumer'
+      );
+
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        result: discoveryInfo,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -189,31 +216,6 @@ async function handleHttpRequest(req: Request): Promise<Response> {
       const mcpResponse = await proxy.handleRequest(mcpRequest, tenantId, actor);
 
       return new Response(JSON.stringify(mcpResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Discovery endpoint (public, no API key required)
-    if (path === '/meta.discover' && req.method === 'GET') {
-      // Import discovery handler
-      const { getDiscoveryInfo } = await import('./discovery.ts');
-      const { loadConfig } = await import('./config.ts');
-      const { ProcessManager } = await import('./process-manager.ts');
-      
-      const config = loadConfig();
-      const processManager = new ProcessManager();
-      
-      const discoveryInfo = await getDiscoveryInfo(
-        config,
-        processManager,
-        'https://echelon.com/signup'
-      );
-
-      return new Response(JSON.stringify({
-        jsonrpc: '2.0',
-        id: null,
-        result: discoveryInfo,
-      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
