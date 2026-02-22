@@ -55,6 +55,19 @@ export interface ProposalResponse {
   message?: string;
 }
 
+export interface HeartbeatRequest {
+  kernel_id: string;
+  version: string;
+  packs: string[];
+  env?: string;
+}
+
+export interface HeartbeatResponse {
+  ok: boolean;
+  message?: string;
+  error?: string;
+}
+
 export interface ControlPlaneAdapter {
   /**
    * Request authorization decision from Governance Hub
@@ -70,6 +83,13 @@ export interface ControlPlaneAdapter {
    * This is NOT on the hot path - proposals are async and require human approval
    */
   proposePolicy?(request: ProposalRequest): Promise<ProposalResponse>;
+
+  /**
+   * Send heartbeat to register kernel with Governance Hub
+   * 
+   * Called on startup to register the kernel
+   */
+  heartbeat?(request: HeartbeatRequest): Promise<HeartbeatResponse>;
 }
 
 /**
@@ -122,6 +142,28 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(error.error || `Policy proposal failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.data || result;
+  }
+
+  async heartbeat(request: HeartbeatRequest): Promise<HeartbeatResponse> {
+    const response = await fetch(`${this.platformUrl}/functions/v1/heartbeat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.kernelApiKey}`,
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      return {
+        ok: false,
+        error: error.error || `Heartbeat failed: ${response.status}`,
+      };
     }
 
     const result = await response.json();

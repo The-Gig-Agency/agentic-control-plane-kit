@@ -348,6 +348,7 @@ Use **kernel/** (TypeScript).
 - [SAAS-DEPLOYMENT-GUIDE.md](./SAAS-DEPLOYMENT-GUIDE.md) - Manual deployment guide
 - [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) - Step-by-step integration for Django/Express/Supabase
 - [kernel-py/README.md](./kernel-py/README.md) - Python kernel (Django/FastAPI)
+- [docs/MCP-GATEWAY-PLAN.md](./docs/MCP-GATEWAY-PLAN.md) - MCP Gateway implementation plan (registered kernel for MCP governance)
 
 ## Real-World Integration Examples
 

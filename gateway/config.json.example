@@ -1,0 +1,26 @@
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
+      "tool_prefix": "fs."
+    },
+    "amazon": {
+      "command": "node",
+      "args": ["./amazon-mcp-server.js"],
+      "tool_prefix": "amazon.",
+      "env": {
+        "AMAZON_API_KEY": "${AMAZON_API_KEY}"
+      }
+    },
+    "stripe": {
+      "command": "npx",
+      "args": ["@stripe/mcp-server"],
+      "tool_prefix": "stripe."
+    }
+  },
+  "kernel": {
+    "kernelId": "mcp-gateway",
+    "version": "1.0.0"
+  }
+}
