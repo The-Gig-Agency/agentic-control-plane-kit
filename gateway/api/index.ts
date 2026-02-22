@@ -1,33 +1,87 @@
 /**
  * Vercel Serverless Function Handler for MCP Gateway
  * 
- * This is the entry point for Vercel Deno serverless functions.
- * Vercel requires a default export that handles Request and returns Response.
+ * Minimal handler to test Deno in Vercel
  */
 
-import { handleHttpRequest } from '../http-server.ts';
-
-// Export default handler for Vercel
+// Simple handler without any imports first
 export default async function handler(req: Request): Promise<Response> {
   try {
-    return await handleHttpRequest(req);
-  } catch (error) {
-    // Catch any unhandled errors and return a proper response
-    console.error('[Vercel Handler] Unhandled error:', error);
-    const origin = req.headers.get('Origin');
-    const corsHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': origin || '*',
+    const url = new URL(req.url);
+    const path = url.pathname;
+    
+    // CORS headers
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
       'Content-Type': 'application/json',
     };
     
+    // Handle OPTIONS
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+    
+    // Health check - simplest possible
+    if (path === '/health' && req.method === 'GET') {
+      return new Response(JSON.stringify({ status: 'ok' }), {
+        headers: corsHeaders,
+      });
+    }
+    
+    // Discovery - basic response
+    if (path === '/meta.discover' && req.method === 'GET') {
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        result: {
+          gateway: {
+            name: 'Echelon MCP Gateway',
+            url: 'https://gateway.buyechelon.com',
+            registration_required: true,
+            registration_url: 'https://www.buyechelon.com/consumer',
+          },
+          servers: [],
+          capabilities: {
+            tools: true,
+            resources: true,
+            prompts: true,
+            sampling: true,
+          },
+        },
+      }), {
+        headers: corsHeaders,
+      });
+    }
+    
+    // MCP endpoint - will need API key and imports, but for now return error
+    if (path === '/mcp' || path === '/') {
+      return new Response(JSON.stringify({
+        error: 'MCP endpoint requires API key and full gateway initialization',
+      }), {
+        status: 401,
+        headers: corsHeaders,
+      });
+    }
+    
+    // Not found
+    return new Response(JSON.stringify({ error: 'Not found' }), {
+      status: 404,
+      headers: corsHeaders,
+    });
+    
+  } catch (error) {
+    console.error('[Handler] Error:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
     }), {
       status: 500,
-      headers: corsHeaders,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 }
