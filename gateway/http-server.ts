@@ -77,7 +77,7 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // Health check (public)
+    // Health check (public, no initialization needed)
     if (path === '/health' && req.method === 'GET') {
       return new Response(JSON.stringify({ status: 'ok' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -86,27 +86,80 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
 
     // Discovery endpoint (public, no API key required)
     if (path === '/meta.discover' && req.method === 'GET') {
-      // Import discovery handler
-      const { getDiscoveryInfo } = await import('./discovery.ts');
-      const { loadConfig } = await import('./config.ts');
-      const { ProcessManager } = await import('./process-manager.ts');
-      
-      const config = loadConfig();
-      const processManager = new ProcessManager();
-      
-      const discoveryInfo = await getDiscoveryInfo(
-        config,
-        processManager,
-        'https://www.buyechelon.com/consumer'
-      );
+      try {
+        // Try to load config, but handle gracefully if it doesn't exist
+        let config;
+        let processManager;
+        try {
+          const { loadConfig } = await import('./config.ts');
+          const { ProcessManager } = await import('./process-manager.ts');
+          config = loadConfig();
+          processManager = new ProcessManager();
+        } catch (error) {
+          // Config might not exist in serverless - return basic discovery info
+          console.warn('[HTTP] Config not found, returning basic discovery info:', error);
+          return new Response(JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            result: {
+              gateway: {
+                name: 'Echelon MCP Gateway',
+                url: 'https://gateway.buyechelon.com',
+                registration_required: true,
+                registration_url: 'https://www.buyechelon.com/consumer',
+              },
+              servers: [],
+              capabilities: {
+                tools: true,
+                resources: true,
+                prompts: true,
+                sampling: true,
+              },
+            },
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        const { getDiscoveryInfo } = await import('./discovery.ts');
+        const discoveryInfo = await getDiscoveryInfo(
+          config,
+          processManager,
+          'https://www.buyechelon.com/consumer'
+        );
 
-      return new Response(JSON.stringify({
-        jsonrpc: '2.0',
-        id: null,
-        result: discoveryInfo,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          result: discoveryInfo,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('[HTTP] Discovery error:', error);
+        // Return basic discovery info even on error
+        return new Response(JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          result: {
+            gateway: {
+              name: 'Echelon MCP Gateway',
+              url: 'https://gateway.buyechelon.com',
+              registration_required: true,
+              registration_url: 'https://www.buyechelon.com/consumer',
+            },
+            servers: [],
+            capabilities: {
+              tools: true,
+              resources: true,
+              prompts: true,
+              sampling: true,
+            },
+          },
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Extract API key from headers only (SECURITY: query params can leak in logs)
