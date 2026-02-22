@@ -1,0 +1,7 @@
+{
+  "name": "mcp-gateway",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP Gateway for Vercel",
+  "main": "api/index.ts"
+}
