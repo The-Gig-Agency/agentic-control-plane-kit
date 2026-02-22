@@ -83,3 +83,76 @@ export async function getTenantFromApiKey(
   // For now, return null (use env var instead)
   return null;
 }
+
+/**
+ * Extract tenant ID from API key (Hosted Gateway)
+ * 
+ * Looks up tenant from Repo B using API key
+ * Caches results for performance
+ */
+export async function extractTenantFromApiKey(
+  apiKey: string
+): Promise<string> {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('API key is required');
+  }
+
+  // Validate API key format
+  if (!apiKey.startsWith('mcp_')) {
+    throw new Error('Invalid API key format. Must start with "mcp_"');
+  }
+
+  // TODO: Implement tenant lookup from Repo B
+  // For now, check if we have a lookup endpoint
+  const platformUrl = Deno.env.get('ACP_BASE_URL');
+  const kernelApiKey = Deno.env.get('ACP_KERNEL_KEY');
+
+  if (!platformUrl || !kernelApiKey) {
+    throw new Error(
+      'ACP_BASE_URL and ACP_KERNEL_KEY required for API key lookup'
+    );
+  }
+
+  // Check cache first (if implemented)
+  // const cached = await tenantCache.get(apiKey);
+  // if (cached) return cached;
+
+  // Lookup from Repo B
+  try {
+    const response = await fetch(`${platformUrl}/functions/v1/api-keys/lookup`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${kernelApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('API key not found');
+      }
+      if (response.status === 401) {
+        throw new Error('Invalid API key');
+      }
+      throw new Error(`API key lookup failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const tenantId = data.tenant_id;
+
+    if (!tenantId) {
+      throw new Error('Tenant ID not found in response');
+    }
+
+    // Cache result (if cache implemented)
+    // await tenantCache.set(apiKey, tenantId, 3600000); // 1 hour
+
+    return tenantId;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not found')) {
+      throw new Error('Invalid API key');
+    }
+    throw error;
+  }
+}

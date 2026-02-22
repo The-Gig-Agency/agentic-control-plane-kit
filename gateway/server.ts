@@ -29,6 +29,9 @@ let healthMonitor: HealthMonitor;
 let proxy: MCPProxy;
 let tenantId: string;
 
+// Export for HTTP server
+export { proxy, processManager, controlPlane, cache };
+
 /**
  * Initialize gateway
  */
@@ -155,16 +158,28 @@ async function initialize(): Promise<void> {
 
 /**
  * Handle incoming MCP request
+ * 
+ * @param request - MCP request
+ * @param tenantId - Tenant ID (optional, will use env var if not provided)
+ * @param actor - Actor (optional, will use system actor if not provided)
  */
-async function handleMCPRequest(
-  request: MCPRequest
+export async function handleMCPRequest(
+  request: MCPRequest,
+  tenantIdOverride?: string,
+  actorOverride?: Actor
 ): Promise<MCPResponse> {
   try {
-    // Extract actor (Phase 1: system actor)
-    const actor = extractActor();
+    // Use provided tenant ID or fall back to env var
+    const effectiveTenantId = tenantIdOverride || tenantId;
+    if (!effectiveTenantId) {
+      throw new ConfigurationError('Tenant ID is required');
+    }
+
+    // Use provided actor or fall back to system actor
+    const effectiveActor = actorOverride || extractActor();
 
     // Handle request via proxy
-    return await proxy.handleRequest(request, tenantId, actor);
+    return await proxy.handleRequest(request, effectiveTenantId, effectiveActor);
   } catch (error) {
     // This should rarely happen as proxy.handleRequest catches errors
     // But if it does, return a proper error response
