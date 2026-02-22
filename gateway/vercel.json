@@ -4,11 +4,6 @@
   "outputDirectory": ".",
   "installCommand": "",
   "framework": null,
-  "functions": {
-    "api/index.ts": {
-      "runtime": "@vercel/deno@3.0.0"
-    }
-  },
   "routes": [
     {
       "src": "/health",
