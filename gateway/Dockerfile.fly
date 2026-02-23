@@ -9,6 +9,12 @@ WORKDIR /app
 # Copy kernel to /kernel (absolute path for file:///kernel/... imports)
 COPY kernel/ /kernel/
 
+# Build-time assertion: Prove /kernel/src/sanitize.ts exists
+RUN echo "=== Kernel src directory ===" && \
+    ls -la /kernel/src/ || (echo "ERROR: /kernel/src/ does not exist" && exit 1)
+RUN test -f /kernel/src/sanitize.ts || (echo "ERROR: /kernel/src/sanitize.ts does not exist" && exit 1)
+RUN echo "✅ /kernel/src/sanitize.ts verified"
+
 # Copy gateway code to /app/gateway
 COPY gateway/ /app/gateway/
 
