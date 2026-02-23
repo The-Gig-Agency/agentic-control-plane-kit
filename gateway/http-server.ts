@@ -323,3 +323,6 @@ if (import.meta.main) {
     Deno.exit(1);
   });
 }
+
+// Also support being imported and called directly (for Docker/ECS)
+export { startHttpServer, handleHttpRequest };

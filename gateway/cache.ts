@@ -7,7 +7,7 @@
  */
 
 import { CachedDecision } from './types.ts';
-import type { AuthorizationResponse } from '../kernel/src/control-plane-adapter.ts';
+import type { AuthorizationResponse } from './kernel-bridge.ts';
 
 export class AuthorizationCache {
   private cache: Map<string, CachedDecision> = new Map();

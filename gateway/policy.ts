@@ -10,11 +10,11 @@ import type {
   ControlPlaneAdapter,
   AuthorizationRequest,
   AuthorizationResponse,
-} from '../kernel/src/control-plane-adapter.ts';
+} from './kernel-bridge.ts';
 import { Actor } from './types.ts';
 import { AuthorizationCache } from './cache.ts';
-import { canonicalJson, sanitize } from '../kernel/src/sanitize.ts';
-import { hashPayload } from '../kernel/src/audit.ts';
+import { canonicalJson, sanitize } from './kernel-bridge.ts';
+import { hashPayload } from './kernel-bridge.ts';
 import {
   AuthorizationError,
   NetworkError,

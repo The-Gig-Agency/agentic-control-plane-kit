@@ -6,11 +6,8 @@
  */
 
 import { Actor } from './types.ts';
-import type { ControlPlaneAdapter, AuthorizationResponse } from '../kernel/src/control-plane-adapter.ts';
-import type { AuditEvent } from '../kernel/src/types.ts';
-import { HttpAuditAdapter } from '../kernel/src/audit-adapter.ts';
-import { hashPayload } from '../kernel/src/audit.ts';
-import { sanitize } from '../kernel/src/sanitize.ts';
+import type { ControlPlaneAdapter, AuthorizationResponse, AuditEvent } from './kernel-bridge.ts';
+import { HttpAuditAdapter, hashPayload, sanitize } from './kernel-bridge.ts';
 
 /**
  * Create audit event for MCP operation

@@ -12,7 +12,7 @@ import { ProcessManager } from './process-manager.ts';
 import { HealthMonitor } from './health.ts';
 import { MCPProxy } from './proxy.ts';
 import { MCPRequest, MCPResponse } from './types.ts';
-import { HttpControlPlaneAdapter } from '../kernel/src/control-plane-adapter.ts';
+import { HttpControlPlaneAdapter } from './kernel-bridge.ts';
 import {
   ConfigurationError,
   NetworkError,

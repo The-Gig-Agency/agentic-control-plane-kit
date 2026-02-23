@@ -18,7 +18,7 @@ import { ProcessManager } from './process-manager.ts';
 import { getServerForTool, stripToolPrefix } from './namespace.ts';
 import { authorizeAction } from './policy.ts';
 import { emitAuthorizationAudit } from './audit.ts';
-import type { ControlPlaneAdapter, AuthorizationResponse } from '../kernel/src/control-plane-adapter.ts';
+import type { ControlPlaneAdapter, AuthorizationResponse } from './kernel-bridge.ts';
 import { AuthorizationCache } from './cache.ts';
 import { Actor } from './types.ts';
 import { MCPClientManager } from './mcp-client.ts';
