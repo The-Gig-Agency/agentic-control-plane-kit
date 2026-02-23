@@ -10,8 +10,7 @@ WORKDIR /app
 COPY kernel/ /kernel/
 
 # Build-time assertion: Prove /kernel/src/sanitize.ts exists
-RUN echo "=== Kernel src directory ===" && \
-    ls -la /kernel/src/ || (echo "ERROR: /kernel/src/ does not exist" && exit 1)
+RUN echo "=== kernel/src listing ===" && ls -la /kernel/src || true
 RUN test -f /kernel/src/sanitize.ts || (echo "ERROR: /kernel/src/sanitize.ts does not exist" && exit 1)
 RUN echo "✅ /kernel/src/sanitize.ts verified"
 
@@ -35,12 +34,10 @@ RUN if [ ! -f config.json ]; then \
 # Expose port
 EXPOSE 8000
 
-# Override entrypoint to prevent cwd reset
-ENTRYPOINT []
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD deno run --allow-net --allow-env --allow-read /app/gateway/api/health-check.ts || exit 1
 
-# Run gateway HTTP server with absolute path
-CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "--allow-run", "/app/gateway/http-server.ts"]
+# --- force runtime behavior (do not let denoland entrypoint reset cwd) ---
+ENTRYPOINT []
+CMD ["deno","run","--allow-net","--allow-env","--allow-read","--allow-run","/app/gateway/http-server.ts"]
