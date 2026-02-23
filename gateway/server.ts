@@ -93,15 +93,15 @@ export async function initialize(): Promise<void> {
     // Continue anyway - authorization will fail but gateway can start
   }
 
-  // 4. Extract tenant ID
+  // 4. Extract tenant ID (optional for hosted gateway - can be extracted per-request from API key)
   try {
     tenantId = extractTenantId();
     console.log(`[GATEWAY] ✅ Tenant ID: ${tenantId.substring(0, 8)}...`);
   } catch (error) {
-    throw new ConfigurationError(
-      `Failed to extract tenant ID: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      error instanceof Error ? error : undefined
-    );
+    // For hosted gateway, tenant ID is extracted per-request from API key
+    // So it's OK if ACP_TENANT_ID is not set
+    console.log(`[GATEWAY] ⚠️  Tenant ID not set (will be extracted per-request from API key)`);
+    tenantId = ''; // Will be set per-request
   }
 
   // 5. Initialize cache

@@ -21,15 +21,22 @@ import {
 
 // Import gateway initialization
 import { initialize } from './server.ts';
+import type { MCPProxy } from './proxy.ts';
 
 // Initialize gateway (reuse existing initialization)
 let initialized = false;
+let proxy: MCPProxy | null = null;
 
 async function ensureInitialized(): Promise<void> {
   if (initialized) return;
   
   // Run gateway initialization (loads config, connects to Repo B, spawns MCP servers)
   await initialize();
+  
+  // Import proxy after initialization
+  const { proxy: initializedProxy } = await import('./server.ts');
+  proxy = initializedProxy;
+  
   initialized = true;
 }
 
@@ -265,8 +272,12 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
       // Extract actor (system actor for now, could be enhanced to use API key)
       const actor = extractActor();
 
-      // Get proxy from initialized server
-      const { proxy } = await import('./server.ts');
+      // Ensure gateway is initialized (proxy should be available)
+      await ensureInitialized();
+      
+      if (!proxy) {
+        throw new Error('Proxy not initialized');
+      }
       
       // Handle MCP request via proxy
       const mcpResponse = await proxy.handleRequest(mcpRequest, tenantId, actor);
