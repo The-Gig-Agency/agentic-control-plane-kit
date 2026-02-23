@@ -11,6 +11,9 @@
  * - So we use absolute path file:///kernel/... here
  */
 
+// Debug: Show the path being used
+console.log("KERNEL_BRIDGE_PATH", "file:///kernel/src/sanitize.ts");
+
 // Control Plane Adapter
 export type {
   ControlPlaneAdapter,

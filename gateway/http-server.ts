@@ -5,6 +5,9 @@
  * Multi-tenant by default (identifies tenant via API key)
  */
 
+// Version stamp - shows what container is executing
+console.log("GATEWAY_BUILD", "2026-02-23T00:45Z", "git", Deno.env.get("FLY_IMAGE_REF") ?? "no-ref");
+
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { MCPRequest, MCPResponse } from './types.ts';
 import { extractTenantFromApiKey, extractActor } from './auth.ts';
