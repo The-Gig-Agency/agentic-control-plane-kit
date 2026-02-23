@@ -91,7 +91,13 @@ export class MCPProxy {
           break;
 
         case 'tools/call':
-          result = await this.handleToolCall(params, tenantId, actor);
+          // Check if this is the gateway's own connector discovery tool
+          if (params.name === 'echelon.connectors.list') {
+            result = await this.handleConnectorsList(tenantId);
+          } else {
+            // Otherwise, handle as regular tool call
+            result = await this.handleToolCall(params, tenantId, actor);
+          }
           break;
 
         case 'resources/list':
@@ -215,9 +221,23 @@ export class MCPProxy {
 
   /**
    * Aggregate tools from all downstream servers
+   * Also includes gateway's own tools (e.g., echelon.connectors.list)
    */
   async aggregateTools(): Promise<MCPTool[]> {
     const allTools: MCPTool[] = [];
+
+    // Add gateway's own connector discovery tool (Option B)
+    allTools.push({
+      name: 'echelon.connectors.list',
+      description: 'List available connectors from the catalog. Returns connector_id, name, tool_prefix, scopes, and docs_url for each connector.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    });
+
+    // Aggregate tools from downstream servers
     const processes = this.processManager.getAllProcesses();
 
     for (const process of processes) {
@@ -257,6 +277,11 @@ export class MCPProxy {
     const toolName = params.name;
     if (!toolName) {
       throw new Error('Tool name required');
+    }
+
+    // Gateway's own tools don't need server lookup
+    if (toolName === 'echelon.connectors.list') {
+      return await this.handleConnectorsList(tenantId);
     }
 
     // Find server for this tool
@@ -883,5 +908,37 @@ export class MCPProxy {
         data,
       },
     };
+  }
+
+  /**
+   * Handle connectors.list tool (Option B: Discovery inside MCP)
+   * 
+   * Returns available connectors from Repo B catalog
+   */
+  private async handleConnectorsList(tenantId: string): Promise<any> {
+    const platformUrl = this.platformUrl;
+    
+    try {
+      const response = await fetch(`${platformUrl}/functions/v1/connectors/list`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.kernelApiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch connectors: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        connectors: data.data?.connectors || [],
+        count: data.data?.count || 0,
+      };
+    } catch (error) {
+      console.error('[PROXY] Failed to fetch connectors:', error);
+      throw new Error(`Failed to list connectors: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
