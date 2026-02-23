@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # --- force runtime behavior (do not let denoland entrypoint reset cwd) ---
 ENTRYPOINT []
-CMD ["deno","run","--allow-net","--allow-env","--allow-read","--allow-run","/app/gateway/http-server.ts"]
+CMD ["deno","run","--unstable-sloppy-imports","--allow-net","--allow-env","--allow-read","--allow-run","/app/gateway/http-server.ts"]
