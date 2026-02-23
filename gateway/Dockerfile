@@ -1,0 +1,42 @@
+# Dockerfile for MCP Gateway
+# Works with Railway, Render, ECS, or any Docker host
+
+FROM denoland/deno:1.40.0
+
+WORKDIR /app
+
+# Copy kernel to /kernel (absolute path for file:///kernel/... imports)
+COPY kernel/ /kernel/
+
+# Build-time assertion: Prove /kernel/src/sanitize.ts exists
+RUN echo "=== kernel/src listing ===" && ls -la /kernel/src || true
+RUN test -f /kernel/src/sanitize.ts || (echo "ERROR: /kernel/src/sanitize.ts does not exist" && exit 1)
+RUN echo "✅ /kernel/src/sanitize.ts verified"
+
+# Copy gateway code to /app/gateway
+COPY gateway/ /app/gateway/
+
+# Verify structure (debugging)
+RUN echo "=== Verifying file structure ===" && \
+    test -f /kernel/src/sanitize.ts && echo "✅ /kernel/src/sanitize.ts found" || echo "❌ /kernel/src/sanitize.ts NOT found" && \
+    test -f /kernel/src/control-plane-adapter.ts && echo "✅ /kernel/src/control-plane-adapter.ts found" || echo "❌ /kernel/src/control-plane-adapter.ts NOT found" && \
+    test -f /app/gateway/policy.ts && echo "✅ /app/gateway/policy.ts found" || echo "❌ /app/gateway/policy.ts NOT found"
+
+# Set working directory to gateway
+WORKDIR /app/gateway
+
+# Create config.json if it doesn't exist (minimal config)
+RUN if [ ! -f config.json ]; then \
+  echo '{"servers":{},"kernel":{"kernelId":"mcp-gateway","version":"1.0.0"}}' > config.json; \
+  fi
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD deno run --allow-net --allow-env --allow-read /app/gateway/api/health-check.ts || exit 1
+
+# --- force runtime behavior (do not let denoland entrypoint reset cwd) ---
+ENTRYPOINT []
+CMD ["deno","run","--unstable-sloppy-imports","--allow-net","--allow-env","--allow-read","--allow-run","/app/gateway/http-server.ts"]
