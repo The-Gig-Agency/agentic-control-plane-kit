@@ -1,0 +1,37 @@
+# Dockerfile for Fly.io deployment
+# Uses Deno runtime for subprocess spawning and filesystem access
+# Build context should be set to repo root (see fly.toml)
+
+FROM denoland/deno:1.40.0
+
+WORKDIR /app
+
+# Copy kernel to /kernel (absolute path for file:///kernel/... imports)
+COPY kernel/ /kernel/
+
+# Copy gateway code to /app/gateway
+COPY gateway/ /app/gateway/
+
+# Verify structure (debugging)
+RUN echo "=== Verifying file structure ===" && \
+    test -f /kernel/src/sanitize.ts && echo "✅ /kernel/src/sanitize.ts found" || echo "❌ /kernel/src/sanitize.ts NOT found" && \
+    test -f /kernel/src/control-plane-adapter.ts && echo "✅ /kernel/src/control-plane-adapter.ts found" || echo "❌ /kernel/src/control-plane-adapter.ts NOT found" && \
+    test -f /app/gateway/policy.ts && echo "✅ /app/gateway/policy.ts found" || echo "❌ /app/gateway/policy.ts NOT found"
+
+# Set working directory to gateway
+WORKDIR /app/gateway
+
+# Create config.json if it doesn't exist (minimal config)
+RUN if [ ! -f config.json ]; then \
+  echo '{"servers":{},"kernel":{"kernelId":"mcp-gateway","version":"1.0.0"}}' > config.json; \
+  fi
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD deno run --allow-net --allow-env --allow-read api/health-check.ts || exit 1
+
+# Run gateway HTTP server
+CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "--allow-run", "http-server.ts"]
