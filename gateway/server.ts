@@ -11,7 +11,7 @@ import { AuthorizationCache } from './cache.ts';
 import { ProcessManager } from './process-manager.ts';
 import { HealthMonitor } from './health.ts';
 import { MCPProxy } from './proxy.ts';
-import { MCPRequest, MCPResponse } from './types.ts';
+import { MCPRequest, MCPResponse, Actor } from './types.ts';
 import { HttpControlPlaneAdapter } from './kernel-bridge.ts';
 import {
   ConfigurationError,
@@ -35,7 +35,7 @@ export { proxy, processManager, controlPlane, cache };
 /**
  * Initialize gateway
  */
-async function initialize(): Promise<void> {
+export async function initialize(): Promise<void> {
   console.log('[GATEWAY] Initializing MCP Gateway...');
 
   // 1. Load configuration
