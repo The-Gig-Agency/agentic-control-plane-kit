@@ -12,19 +12,19 @@ import {
   KernelConfig,
   ImpactShape,
   AuditEvent
-} from './types';
-import { ExecutorAdapter } from './executor-adapter';
-import { ControlPlaneAdapter } from './control-plane-adapter';
-import { validateRequest, validateParams, ValidationError } from './validate';
-import { validateApiKey, hasScope } from './auth';
-import { generateRequestId } from './audit';
-import { sanitize } from './sanitize';
-import { emitAuditEvent } from './audit-event';
-import { getIdempotencyReplay, storeIdempotencyReplay } from './idempotency';
-import { checkRateLimit, getActionRateLimit } from './rate_limit';
-import { applyCeilings } from './ceilings';
-import { Pack, mergePacks, validatePack } from './pack';
-import { getMetaPack, setGlobalActionRegistry } from './meta-pack';
+} from './types.ts';
+import { ExecutorAdapter } from './executor-adapter.ts';
+import { ControlPlaneAdapter } from './control-plane-adapter.ts';
+import { validateRequest, validateParams, ValidationError } from './validate.ts';
+import { validateApiKey, hasScope } from './auth.ts';
+import { generateRequestId } from './audit.ts';
+import { sanitize } from './sanitize.ts';
+import { emitAuditEvent } from './audit-event.ts';
+import { getIdempotencyReplay, storeIdempotencyReplay } from './idempotency.ts';
+import { checkRateLimit, getActionRateLimit } from './rate_limit.ts';
+import { applyCeilings } from './ceilings.ts';
+import { Pack, mergePacks, validatePack } from './pack.ts';
+import { getMetaPack, setGlobalActionRegistry } from './meta-pack.ts';
 
 export interface RequestMeta {
   request?: Request; // Raw HTTP request for auth validation

@@ -3,7 +3,7 @@
  * Each pack must export actions and handlers
  */
 
-import { ActionDef, ActionHandler } from './types';
+import { ActionDef, ActionHandler } from './types.ts';
 
 export interface Pack {
   name: string;

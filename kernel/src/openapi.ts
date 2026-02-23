@@ -2,7 +2,7 @@
  * OpenAPI 3.0 specification generator
  */
 
-import { ActionDef } from './types';
+import { ActionDef } from './types.ts';
 
 export interface OpenAPISpec {
   openapi: string;

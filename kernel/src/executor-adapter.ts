@@ -5,7 +5,7 @@
  * maintaining governance through the kernel.
  */
 
-import { hashPayload } from './audit';
+import { hashPayload } from './audit.ts';
 
 export interface ExecutorResponse<T = any> {
   data: T;

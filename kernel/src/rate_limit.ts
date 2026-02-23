@@ -2,7 +2,7 @@
  * Rate limiting utilities
  */
 
-import { RateLimitAdapter } from './types';
+import { RateLimitAdapter } from './types.ts';
 
 export interface RateLimitResult {
   allowed: boolean;

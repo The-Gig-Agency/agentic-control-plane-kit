@@ -2,7 +2,7 @@
  * Authentication and authorization utilities
  */
 
-import { DbAdapter, Bindings } from './types';
+import { DbAdapter, Bindings } from './types.ts';
 
 export interface AuthResult {
   success: boolean;
