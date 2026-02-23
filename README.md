@@ -336,19 +336,47 @@ Use **kernel/** (TypeScript).
 
 ## Documentation
 
-### For Agents
+### Core Documentation
+- **[INSTALL.md](./INSTALL.md)** - Complete installation checklist
+- **[INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md)** - How to integrate with Repo B (Governance Hub)
+- **[SAAS-DEPLOYMENT-GUIDE.md](./SAAS-DEPLOYMENT-GUIDE.md)** - Deploying ACP in a SaaS project
+- **[KERNEL-ARCHITECTURE.md](./KERNEL-ARCHITECTURE.md)** - Kernel architecture and design
+- **[spec/ACP-SPEC.md](./spec/ACP-SPEC.md)** - Complete ACP specification
 
-- **[Agent Governance Guide](./docs/AGENT-GOVERNANCE-GUIDE.md)** - Complete guide for agents using governance capabilities (policies, limits, runbooks, API actions, runbooks, troubleshooting)
+### Three-Repo Architecture
+- **[THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)** - **Canonical architecture model** (Repo A, B, C roles and responsibilities)
+- **[MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md](./MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md)** - How MCP Gateway fits into three-repo system
+
+### MCP Gateway
+- **[MCP-GATEWAY-SUMMARY.md](./MCP-GATEWAY-SUMMARY.md)** - MCP Gateway implementation summary
+- **[MCP-DEPLOYMENT-GUIDE.md](./MCP-DEPLOYMENT-GUIDE.md)** - MCP Gateway deployment guide
+- **[gateway/README.md](./gateway/README.md)** - Gateway-specific documentation
+- **[docs/MCP-GATEWAY-PLAN.md](./docs/MCP-GATEWAY-PLAN.md)** - Gateway architecture plan
+
+### Security
+- **[SECURITY-REVIEW.md](./SECURITY-REVIEW.md)** - Security review and hardening
+- **[INTERNAL-ENDPOINTS-SECURITY.md](./INTERNAL-ENDPOINTS-SECURITY.md)** - Internal endpoints security model (HMAC auth)
+- **[MCP-SECURITY-RISKS.md](./MCP-SECURITY-RISKS.md)** - MCP-specific security risks
+
+### Governance
+- **[docs/AGENT-GOVERNANCE-GUIDE.md](./docs/AGENT-GOVERNANCE-GUIDE.md)** - Agent governance guide
+- **[docs/GOVERNANCE-PACK.md](./docs/GOVERNANCE-PACK.md)** - Governance pack documentation
+
+### MCP Registration & Credentials
+- **[MCP-REGISTRATION-AND-CREDENTIAL-STORAGE-IMPLEMENTATION.md](./MCP-REGISTRATION-AND-CREDENTIAL-STORAGE-IMPLEMENTATION.md)** - MCP server registration and credential storage
+- **[CONNECTOR-CATALOG-IMPLEMENTATION.md](./CONNECTOR-CATALOG-IMPLEMENTATION.md)** - Connector catalog system
+
+### Consumer Product
+- **[CONSUMER-PRODUCT-GUIDE.md](./CONSUMER-PRODUCT-GUIDE.md)** - Consumer product guide
+- **[SIGNUP-IMPLEMENTATION-GUIDE.md](./SIGNUP-IMPLEMENTATION-GUIDE.md)** - Signup flow implementation
+- **[GATEWAY-SIGNUP-ARCHITECTURE.md](./GATEWAY-SIGNUP-ARCHITECTURE.md)** - Signup architecture
+- **[BILLING-ARCHITECTURE.md](./BILLING-ARCHITECTURE.md)** - Billing model
 
 ### For Developers
-
 - [spec/README.md](./spec/README.md) - Universal contract (source of truth)
 - [installer/README.md](./installer/README.md) - Automated installer (Echelon CLI)
 - [INSTALLER-ARCHITECTURE.md](./INSTALLER-ARCHITECTURE.md) - Installer architecture and design
-- [SAAS-DEPLOYMENT-GUIDE.md](./SAAS-DEPLOYMENT-GUIDE.md) - Manual deployment guide
-- [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) - Step-by-step integration for Django/Express/Supabase
 - [kernel-py/README.md](./kernel-py/README.md) - Python kernel (Django/FastAPI)
-- [docs/MCP-GATEWAY-PLAN.md](./docs/MCP-GATEWAY-PLAN.md) - MCP Gateway implementation plan (registered kernel for MCP governance)
 
 ## Real-World Integration Examples
 

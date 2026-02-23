@@ -1,0 +1,62 @@
+{
+  "family": "mcp-gateway",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "gateway",
+      "image": "YOUR_ECR_REPO_URI:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "ACP_BASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT:secret:gateway/acp-base-url"
+        },
+        {
+          "name": "ACP_KERNEL_KEY",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT:secret:gateway/kernel-key"
+        },
+        {
+          "name": "ALLOWED_ORIGINS",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT:secret:gateway/allowed-origins"
+        },
+        {
+          "name": "DEFAULT_CORS_ORIGIN",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT:secret:gateway/cors-origin"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/mcp-gateway",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "gateway"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "deno run --allow-net --allow-env api/health-check.ts || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

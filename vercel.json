@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": "gateway",
+  "installCommand": "",
+  "framework": null,
+  "builds": [
+    {
+      "src": "gateway/http-server.ts",
+      "use": "@vercel/deno"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "gateway/http-server.ts"
+    },
+    {
+      "src": "/meta.discover",
+      "dest": "gateway/http-server.ts"
+    },
+    {
+      "src": "/mcp",
+      "dest": "gateway/http-server.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "gateway/http-server.ts"
+    }
+  ]
+}
