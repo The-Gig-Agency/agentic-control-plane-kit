@@ -112,29 +112,36 @@ export async function initialize(): Promise<void> {
   processManager = new ProcessManager();
   console.log('[GATEWAY] Process manager initialized');
 
-  // 7. Spawn downstream MCP servers
+  // 7. Spawn downstream MCP servers (optional - gateway can run without servers)
+  const serverIds = Object.keys(config.servers);
   const spawnErrors: Array<{ serverId: string; error: Error }> = [];
-  for (const [serverId, serverConfig] of Object.entries(config.servers)) {
-    try {
-      await processManager.spawnServer(serverId, serverConfig);
-      console.log(`[GATEWAY] ✅ Spawned server: ${serverId}`);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Unknown error');
-      spawnErrors.push({ serverId, error: err });
-      console.error(`[GATEWAY] ❌ Failed to spawn server "${serverId}":`, formatError(err));
-      // Continue with other servers
+  
+  if (serverIds.length === 0) {
+    console.log('[GATEWAY] ⚠️  No servers configured - running in governance-only mode');
+  } else {
+    for (const [serverId, serverConfig] of Object.entries(config.servers)) {
+      try {
+        await processManager.spawnServer(serverId, serverConfig);
+        console.log(`[GATEWAY] ✅ Spawned server: ${serverId}`);
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error('Unknown error');
+        spawnErrors.push({ serverId, error: err });
+        console.error(`[GATEWAY] ❌ Failed to spawn server "${serverId}":`, formatError(err));
+        // Continue with other servers
+      }
     }
-  }
-  
-  if (spawnErrors.length > 0) {
-    console.warn(`[GATEWAY] ⚠️  ${spawnErrors.length} server(s) failed to spawn. Gateway will continue with available servers.`);
-  }
-  
-  if (spawnErrors.length === Object.keys(config.servers).length) {
-    throw new ProcessError(
-      'All servers failed to spawn. Gateway cannot operate without at least one server.',
-      'all'
-    );
+    
+    if (spawnErrors.length > 0) {
+      console.warn(`[GATEWAY] ⚠️  ${spawnErrors.length} server(s) failed to spawn. Gateway will continue with available servers.`);
+    }
+    
+    // Only fail if we had servers configured but ALL failed
+    if (spawnErrors.length === serverIds.length && serverIds.length > 0) {
+      throw new ProcessError(
+        'All servers failed to spawn. Gateway cannot operate without at least one server.',
+        'all'
+      );
+    }
   }
 
   // 8. Initialize health monitor

@@ -46,14 +46,18 @@ export function validateConfig(config: GatewayConfig): void {
     throw new Error('Config must have "kernel.version" as a string');
   }
 
-  // Validate servers
+  // Validate servers (optional - hosted gateway can run without downstream servers)
   if (!config.servers || typeof config.servers !== 'object') {
     throw new Error('Config must have "servers" object');
   }
 
   const serverIds = Object.keys(config.servers);
+  
+  // Allow empty servers for hosted gateway mode
+  // Gateway can still function as governance layer without downstream MCP servers
   if (serverIds.length === 0) {
-    throw new Error('Config must have at least one server defined');
+    console.warn('[CONFIG] No servers defined - gateway will run in governance-only mode');
+    return; // Skip server validation if no servers
   }
 
   // Validate each server
