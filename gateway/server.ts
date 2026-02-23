@@ -113,35 +113,33 @@ export async function initialize(): Promise<void> {
   console.log('[GATEWAY] Process manager initialized');
 
   // 7. Spawn downstream MCP servers (optional - gateway can run without servers)
+  // Static servers from config.json are now optional - servers are loaded dynamically from Repo B per tenant
   const serverIds = Object.keys(config.servers);
   const spawnErrors: Array<{ serverId: string; error: Error }> = [];
   
   if (serverIds.length === 0) {
-    console.log('[GATEWAY] ⚠️  No servers configured - running in governance-only mode');
+    console.log('[GATEWAY] ⚠️  No static servers configured - running in dynamic mode (servers loaded from Repo B per tenant)');
   } else {
+    console.log(`[GATEWAY] Spawning ${serverIds.length} static server(s) from config.json (dynamic servers will be loaded on-demand)`);
     for (const [serverId, serverConfig] of Object.entries(config.servers)) {
       try {
         await processManager.spawnServer(serverId, serverConfig);
-        console.log(`[GATEWAY] ✅ Spawned server: ${serverId}`);
+        console.log(`[GATEWAY] ✅ Spawned static server: ${serverId}`);
       } catch (error) {
         const err = error instanceof Error ? error : new Error('Unknown error');
         spawnErrors.push({ serverId, error: err });
-        console.error(`[GATEWAY] ❌ Failed to spawn server "${serverId}":`, formatError(err));
+        console.error(`[GATEWAY] ❌ Failed to spawn static server "${serverId}":`, formatError(err));
         // Continue with other servers
       }
     }
     
     if (spawnErrors.length > 0) {
-      console.warn(`[GATEWAY] ⚠️  ${spawnErrors.length} server(s) failed to spawn. Gateway will continue with available servers.`);
+      console.warn(`[GATEWAY] ⚠️  ${spawnErrors.length} static server(s) failed to spawn. Gateway will continue with available servers.`);
     }
     
-    // Only fail if we had servers configured but ALL failed
-    if (spawnErrors.length === serverIds.length && serverIds.length > 0) {
-      throw new ProcessError(
-        'All servers failed to spawn. Gateway cannot operate without at least one server.',
-        'all'
-      );
-    }
+    // Don't fail if static servers fail - dynamic servers will be loaded on-demand
+    // Only fail if we had servers configured but ALL failed AND we're not in dynamic mode
+    // (For now, we always allow dynamic mode, so we never fail here)
   }
 
   // 8. Initialize health monitor

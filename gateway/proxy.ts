@@ -16,6 +16,7 @@ import {
 import type { GatewayConfig } from './config.ts';
 import { ProcessManager } from './process-manager.ts';
 import { getServerForTool, stripToolPrefix } from './namespace.ts';
+import type { ServerConfig } from './types.ts';
 import { authorizeAction } from './policy.ts';
 import { emitAuthorizationAudit } from './audit.ts';
 import type { ControlPlaneAdapter, AuthorizationResponse } from './kernel-bridge.ts';
@@ -36,6 +37,7 @@ import {
   handleRegistration,
   getRegistrationStatus,
 } from './discovery.ts';
+import { ServerRegistry } from './server-registry.ts';
 
 export class MCPProxy {
   private config: GatewayConfig;
@@ -46,6 +48,7 @@ export class MCPProxy {
   private clientManager: MCPClientManager;
   private platformUrl: string;
   private kernelApiKey: string;
+  private serverRegistry: ServerRegistry;
 
   constructor(
     config: GatewayConfig,
@@ -64,6 +67,7 @@ export class MCPProxy {
     this.platformUrl = platformUrl;
     this.kernelApiKey = kernelApiKey;
     this.clientManager = new MCPClientManager();
+    this.serverRegistry = new ServerRegistry(platformUrl, kernelApiKey);
   }
 
   /**
@@ -87,7 +91,7 @@ export class MCPProxy {
 
       switch (method) {
         case 'tools/list':
-          result = await this.aggregateTools();
+          result = await this.aggregateTools(tenantId);
           break;
 
         case 'tools/call':
@@ -222,8 +226,10 @@ export class MCPProxy {
   /**
    * Aggregate tools from all downstream servers
    * Also includes gateway's own tools (e.g., echelon.connectors.list)
+   * 
+   * @param tenantId - Tenant ID to fetch servers for (required for dynamic loading)
    */
-  async aggregateTools(): Promise<MCPTool[]> {
+  async aggregateTools(tenantId?: string): Promise<MCPTool[]> {
     const allTools: MCPTool[] = [];
 
     // Add gateway's own connector discovery tool (Option B)
@@ -236,6 +242,21 @@ export class MCPProxy {
         required: [],
       },
     });
+
+    // Get servers (dynamic from Repo B if tenantId provided, otherwise static config)
+    let servers: Map<string, ServerConfig>;
+    if (tenantId) {
+      try {
+        servers = await this.serverRegistry.getServers(tenantId);
+      } catch (error) {
+        console.error(`[PROXY] Failed to load servers for tenant "${tenantId}":`, error);
+        // Fall back to static config
+        servers = new Map(Object.entries(this.config.servers));
+      }
+    } else {
+      // Fall back to static config
+      servers = new Map(Object.entries(this.config.servers));
+    }
 
     // Aggregate tools from downstream servers
     const processes = this.processManager.getAllProcesses();
@@ -263,6 +284,17 @@ export class MCPProxy {
       }
     }
 
+    // Also check for servers that aren't spawned yet (lazy loading)
+    for (const [serverId, serverConfig] of servers) {
+      // Skip if already spawned
+      if (this.processManager.getAllProcesses().some(p => p.id === serverId)) {
+        continue;
+      }
+
+      // For now, we'll spawn servers on-demand when tools are called
+      // This keeps the implementation simpler
+    }
+
     return allTools;
   }
 
@@ -284,9 +316,41 @@ export class MCPProxy {
       return await this.handleConnectorsList(tenantId);
     }
 
-    // Find server for this tool
-    const serverConfig = getServerForTool(toolName, this.config);
+    // Find server for this tool (try dynamic first, fall back to static)
+    let serverConfig: ServerConfig | null = null;
+    let serverId: string | null = null;
+
+    if (tenantId) {
+      // Try dynamic server registry
+      try {
+        const servers = await this.serverRegistry.getServers(tenantId);
+        for (const [id, config] of servers) {
+          if (toolName.startsWith(config.tool_prefix)) {
+            serverConfig = config;
+            serverId = id;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(`[PROXY] Failed to load servers from registry, falling back to static config:`, error);
+      }
+    }
+
+    // Fall back to static config if not found
     if (!serverConfig) {
+      serverConfig = getServerForTool(toolName, this.config);
+      if (serverConfig) {
+        // Find server ID from static config
+        for (const [id, config] of Object.entries(this.config.servers)) {
+          if (config === serverConfig) {
+            serverId = id;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!serverConfig || !serverId) {
       throw new Error(`No server found for tool: ${toolName}`);
     }
 
@@ -344,8 +408,10 @@ export class MCPProxy {
     ).catch(() => {}); // Don't fail on audit errors
 
     // Strip prefix and forward to downstream server
-    const serverId = this.getServerIdForTool(toolName);
     const strippedName = stripToolPrefix(toolName, serverConfig.tool_prefix);
+    
+    // Ensure server is spawned (on-demand spawning)
+    await this.ensureServerSpawned(serverId, serverConfig);
     
     return await this.forwardToServer(serverId, 'tools/call', {
       name: strippedName,
@@ -705,7 +771,31 @@ export class MCPProxy {
   }
 
   /**
-   * Get server ID for a tool name
+   * Ensure server is spawned (on-demand spawning for dynamic servers)
+   */
+  private async ensureServerSpawned(serverId: string, serverConfig: ServerConfig): Promise<void> {
+    // Check if already spawned
+    const existing = this.processManager.getServerProcess(serverId);
+    if (existing) {
+      return; // Already spawned
+    }
+
+    // Spawn server on-demand
+    try {
+      await this.processManager.spawnServer(serverId, serverConfig);
+      console.log(`[PROXY] Spawned server "${serverId}" on-demand`);
+    } catch (error) {
+      throw new ProcessError(
+        `Failed to spawn server "${serverId}": ${error instanceof Error ? error.message : 'Unknown error'}`,
+        serverId,
+        undefined,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Get server ID for a tool name (legacy method for static config)
    */
   private getServerIdForTool(toolName: string): string {
     const serverConfig = getServerForTool(toolName, this.config);
