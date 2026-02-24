@@ -139,9 +139,12 @@ export async function extractTenantFromApiKey(
     }
 
     const data = await response.json();
-    const tenantId = data.tenant_id;
+    
+    // Handle nested response format: { ok: true, data: { tenant_id: "..." } }
+    const tenantId = data.data?.tenant_id || data.tenant_id;
 
     if (!tenantId) {
+      console.error('[Auth] API key lookup response missing tenant_id:', JSON.stringify(data));
       throw new Error('Tenant ID not found in response');
     }
 
