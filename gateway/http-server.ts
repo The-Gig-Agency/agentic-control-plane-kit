@@ -127,7 +127,16 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                             properties: {
                               signup_api_base: { type: 'string', example: 'https://www.buyechelon.com' },
                               signup_endpoint: { type: 'string', example: '/api/consumer/signup' },
-                              registry_api_base: { type: 'string', example: 'https://governance-hub.supabase.co' },
+                              registry_endpoints: {
+                                type: 'object',
+                                properties: {
+                                  list_servers: { type: 'string' },
+                                  register_server: { type: 'string' },
+                                  update_server: { type: 'string' },
+                                  delete_server: { type: 'string' },
+                                  list_connectors: { type: 'string' },
+                                },
+                              },
                             },
                           },
                         },
@@ -199,6 +208,16 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
           const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
           
+          // Build full registry endpoint URLs (hyphen format, not slash)
+          const registryBase = `${platformUrl}/functions/v1`;
+          const registryEndpoints = {
+            list_servers: `${registryBase}/mcp-servers-list`, // GET
+            register_server: `${registryBase}/mcp-servers-register`, // POST
+            update_server: `${registryBase}/mcp-servers-update`, // PUT
+            delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
+            list_connectors: `${registryBase}/connectors-list`, // GET
+          };
+          
           return new Response(JSON.stringify({
             jsonrpc: '2.0',
             id: null,
@@ -211,7 +230,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                 // API endpoints for programmatic signup
                 signup_api_base: signupApiBase,
                 signup_endpoint: '/api/consumer/signup',
-                registry_api_base: platformUrl,
+                // Registry endpoints - full URLs (no path guessing needed)
+                registry_endpoints: registryEndpoints,
                 docs_url: docsUrl,
               },
               servers: [],
@@ -250,7 +270,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               // API endpoints for programmatic signup
               signup_api_base: discoveryInfo.signup_api_base,
               signup_endpoint: discoveryInfo.signup_endpoint,
-              registry_api_base: discoveryInfo.registry_api_base,
+              // Registry endpoints - full URLs (no path guessing needed)
+              registry_endpoints: discoveryInfo.registry_endpoints,
               docs_url: discoveryInfo.docs_url,
             },
             servers: discoveryInfo.available_servers,
@@ -266,6 +287,16 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
         const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
         
+        // Build full registry endpoint URLs (hyphen format, not slash)
+        const registryBase = `${platformUrl}/functions/v1`;
+        const registryEndpoints = {
+          list_servers: `${registryBase}/mcp-servers-list`, // GET
+          register_server: `${registryBase}/mcp-servers-register`, // POST
+          update_server: `${registryBase}/mcp-servers-update`, // PUT
+          delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
+          list_connectors: `${registryBase}/connectors-list`, // GET
+        };
+        
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
           id: null,
@@ -278,7 +309,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               // API endpoints for programmatic signup
               signup_api_base: signupApiBase,
               signup_endpoint: '/api/consumer/signup',
-              registry_api_base: platformUrl,
+              // Registry endpoints - full URLs (no path guessing needed)
+              registry_endpoints: registryEndpoints,
               docs_url: docsUrl,
             },
             servers: [],

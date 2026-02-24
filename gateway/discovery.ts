@@ -18,7 +18,14 @@ export interface DiscoveryInfo {
   // API endpoints for programmatic signup
   signup_api_base?: string; // Base URL for signup API (e.g., https://www.buyechelon.com)
   signup_endpoint?: string; // Exact signup endpoint path (e.g., /api/consumer/signup)
-  registry_api_base?: string; // Base URL for MCP registry/connector catalog (e.g., https://governance-hub.supabase.co)
+  // Registry endpoints - full URLs (no guessing path format)
+  registry_endpoints?: {
+    list_servers: string; // GET - List MCP servers for tenant
+    register_server: string; // POST - Register new MCP server
+    update_server: string; // PUT - Update MCP server config
+    delete_server: string; // DELETE - Delete MCP server
+    list_connectors: string; // GET - List available connectors from catalog
+  };
   docs_url?: string; // Public documentation URL
   available_servers: ServerDiscoveryInfo[];
   capabilities: {
@@ -101,6 +108,16 @@ export async function getDiscoveryInfo(
   const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
   const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
 
+  // Build full registry endpoint URLs (hyphen format, not slash)
+  const registryBase = `${platformUrl}/functions/v1`;
+  const registryEndpoints = {
+    list_servers: `${registryBase}/mcp-servers-list`, // GET
+    register_server: `${registryBase}/mcp-servers-register`, // POST
+    update_server: `${registryBase}/mcp-servers-update`, // PUT
+    delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
+    list_connectors: `${registryBase}/connectors-list`, // GET
+  };
+
   return {
     gateway_id: config.kernel.kernelId,
     gateway_version: config.kernel.version,
@@ -111,7 +128,8 @@ export async function getDiscoveryInfo(
     // API endpoints for programmatic signup
     signup_api_base: signupApiBase,
     signup_endpoint: '/api/consumer/signup', // Public signup endpoint (no auth required)
-    registry_api_base: platformUrl, // Base URL for connector catalog and MCP server registration
+    // Registry endpoints - full URLs (no path guessing needed)
+    registry_endpoints: registryEndpoints,
     docs_url: docsUrl,
     available_servers: servers,
     capabilities: {

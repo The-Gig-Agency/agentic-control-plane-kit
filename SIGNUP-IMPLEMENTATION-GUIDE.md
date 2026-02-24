@@ -18,6 +18,44 @@
 
 ---
 
+## Signup API Request Format
+
+**Endpoint:** `POST /api/consumer/signup`  
+**Location:** Main website (www.buyechelon.com), not the gateway
+
+**Request Body:**
+```json
+{
+  "name": "Test Org",           // REQUIRED - Organization/company name
+  "email": "test@example.com",  // REQUIRED - User email
+  "company": "Optional Co",    // OPTIONAL - Additional company info
+  "agent_id": "my-agent-001"    // OPTIONAL - Agent identifier
+}
+```
+
+**Important:** The API expects `name` (not `organization_name`). The edge function validates that both `name` and `email` are present.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "tenant_id": "uuid",
+  "api_key": "mcp_abc123...",
+  "api_key_id": "uuid",
+  "gateway_url": "https://gateway.buyechelon.com",
+  "message": "Signup successful! Save your API key - it will not be shown again."
+}
+```
+
+**Example curl:**
+```bash
+curl -X POST https://www.buyechelon.com/api/consumer/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Org","email":"test@example.com"}'
+```
+
+---
+
 ## What Your Main Website Needs
 
 ### Option 1: Edge Function (Recommended for Supabase/Netlify/Vercel)
@@ -41,7 +79,15 @@ serve(async (req) => {
   }
 
   try {
-    const { email, organization_name, agent_id } = await req.json();
+    const { name, email, company, agent_id } = await req.json();
+
+    // Validate required fields
+    if (!email || !name) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Name and email are required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Step 1: Create tenant in Repo B
     const tenantResponse = await fetch(
@@ -54,7 +100,8 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           email,
-          organization_name,
+          organization_name: name, // Repo B expects organization_name
+          company, // Optional
           agent_id: agent_id || `agent-${Date.now()}`,
           integration: 'mcp-gateway',
         }),
@@ -84,7 +131,7 @@ serve(async (req) => {
           tenant_id: tenant_uuid,
           prefix: 'mcp_',
           scopes: ['mcp.tools', 'mcp.resources', 'mcp.prompts', 'mcp.sampling'],
-          name: `${organization_name} - Primary Key`,
+          name: `${name} - Primary Key`,
         }),
       }
     );
@@ -164,7 +211,12 @@ def consumer_signup(request):
     
     data = json.loads(request.body)
     email = data.get('email')
-    organization_name = data.get('organization_name')
+    name = data.get('name')
+    company = data.get('company')  # Optional
+    agent_id = data.get('agent_id')  # Optional
+    
+    if not email or not name:
+        return JsonResponse({'error': 'Name and email are required'}, status=400)
     
     repo_b_url = os.environ.get('REPO_B_URL')
     signup_service_key = os.environ.get('SIGNUP_SERVICE_KEY')
@@ -178,7 +230,9 @@ def consumer_signup(request):
         },
         json={
             'email': email,
-            'organization_name': organization_name,
+            'organization_name': name,  # Repo B expects organization_name
+            'company': company,  # Optional
+            'agent_id': agent_id or f'agent-{int(time.time())}',
             'integration': 'mcp-gateway',
         },
     )
@@ -234,7 +288,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email, organization_name } = req.body;
+  const { name, email, company, agent_id } = req.body;
+  
+  if (!email || !name) {
+    return res.status(400).json({ error: 'Name and email are required' });
+  }
+  
   const repoBUrl = process.env.REPO_B_URL;
   const signupServiceKey = process.env.SIGNUP_SERVICE_KEY;
 
@@ -248,7 +307,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         email,
-        organization_name,
+        organization_name: name,  // Repo B expects organization_name
+        company,  // Optional
+        agent_id: agent_id || `agent-${Date.now()}`,
         integration: 'mcp-gateway',
       }),
     });
