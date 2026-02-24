@@ -86,6 +86,7 @@ curl -X GET "https://gateway.buyechelon.com/meta.discover" | jq '.result.gateway
 
 - ✅ `gateway/discovery.ts` - Normalize platform URL before building registry endpoints
 - ✅ `gateway/http-server.ts` - Normalize platform URL in fallback discovery handler
+- ✅ `gateway/auth.ts` - Normalize platform URL before api-keys/lookup (see GATEWAY-API-KEY-FIX.md)
 
 ---
 

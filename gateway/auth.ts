@@ -102,8 +102,7 @@ export async function extractTenantFromApiKey(
     throw new Error('Invalid API key format. Must start with "mcp_"');
   }
 
-  // TODO: Implement tenant lookup from Repo B
-  // For now, check if we have a lookup endpoint
+  // Lookup tenant from Repo B (same key store as signup/registry)
   const platformUrl = Deno.env.get('ACP_BASE_URL');
   const kernelApiKey = Deno.env.get('ACP_KERNEL_KEY');
 
@@ -113,13 +112,18 @@ export async function extractTenantFromApiKey(
     );
   }
 
+  // Normalize platform URL - remove trailing /functions/v1 if present
+  // (ACP_BASE_URL may already include it; prevents duplication)
+  const baseUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
+  const lookupUrl = `${baseUrl}/functions/v1/api-keys/lookup`;
+
   // Check cache first (if implemented)
   // const cached = await tenantCache.get(apiKey);
   // if (cached) return cached;
 
-  // Lookup from Repo B
+  // Lookup from Repo B (must be same Supabase project as signup)
   try {
-    const response = await fetch(`${platformUrl}/functions/v1/api-keys/lookup`, {
+    const response = await fetch(lookupUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${kernelApiKey}`,
