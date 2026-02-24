@@ -27,13 +27,34 @@
 ```json
 {
   "name": "Test Org",           // REQUIRED - Organization/company name
-  "email": "test@example.com",  // REQUIRED - User email
-  "company": "Optional Co",    // OPTIONAL - Additional company info
+  "email": "test@example.com",  // REQUIRED - User email (maps to billing_email for idempotency)
+  "company": "Optional Co",    // OPTIONAL - Additional company info (not used by Repo B)
   "agent_id": "my-agent-001"    // OPTIONAL - Agent identifier
 }
 ```
 
 **Important:** The API expects `name` (not `organization_name`). The edge function validates that both `name` and `email` are present.
+
+### Idempotency Behavior
+
+**Tenant creation is idempotent** based on `billing_email` + `name`:
+- ✅ If a tenant with the same `billing_email` and `name` already exists, **returns the existing tenant**
+- ✅ Safe to call multiple times (e.g., retry on network error)
+- ✅ Prevents duplicate tenants from multiple signup attempts
+- ✅ `email` from signup request maps to `billing_email` in Repo B
+
+**Example:**
+```typescript
+// First call - creates tenant
+POST /functions/v1/tenants/create
+{ email: "user@example.com", organization_name: "Test Org" }
+→ Returns: { tenant_uuid: "abc-123", ... }
+
+// Second call (same email + name) - returns existing
+POST /functions/v1/tenants/create
+{ email: "user@example.com", organization_name: "Test Org" }
+→ Returns: { tenant_uuid: "abc-123", ... }  // Same tenant!
+```
 
 **Response:**
 ```json
@@ -89,7 +110,8 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Create tenant in Repo B
+    // Step 1: Create tenant in Repo B (idempotent on billing_email + name)
+    // Note: If tenant with same billing_email + name exists, returns existing tenant
     const tenantResponse = await fetch(
       `${REPO_B_URL}/functions/v1/tenants/create`,
       {
@@ -99,11 +121,10 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
+          email, // Maps to billing_email in Repo B (used for idempotency)
           organization_name: name, // Repo B expects organization_name
-          company, // Optional
           agent_id: agent_id || `agent-${Date.now()}`,
-          integration: 'mcp-gateway',
+          // Note: company field is not used by Repo B tenant creation
         }),
       }
     );
@@ -221,7 +242,8 @@ def consumer_signup(request):
     repo_b_url = os.environ.get('REPO_B_URL')
     signup_service_key = os.environ.get('SIGNUP_SERVICE_KEY')
     
-    # Step 1: Create tenant in Repo B
+    # Step 1: Create tenant in Repo B (idempotent on billing_email + name)
+    # Note: If tenant with same billing_email + name exists, returns existing tenant
     tenant_response = requests.post(
         f'{repo_b_url}/functions/v1/tenants/create',
         headers={
@@ -229,11 +251,10 @@ def consumer_signup(request):
             'Content-Type': 'application/json',
         },
         json={
-            'email': email,
+            'email': email,  # Maps to billing_email in Repo B (used for idempotency)
             'organization_name': name,  # Repo B expects organization_name
-            'company': company,  # Optional
             'agent_id': agent_id or f'agent-{int(time.time())}',
-            'integration': 'mcp-gateway',
+            # Note: company field is not used by Repo B tenant creation
         },
     )
     
@@ -298,7 +319,8 @@ export default async function handler(req, res) {
   const signupServiceKey = process.env.SIGNUP_SERVICE_KEY;
 
   try {
-    // Step 1: Create tenant
+    // Step 1: Create tenant (idempotent on billing_email + name)
+    // Note: If tenant with same billing_email + name exists, returns existing tenant
     const tenantRes = await fetch(`${repoBUrl}/functions/v1/tenants/create`, {
       method: 'POST',
       headers: {
@@ -306,11 +328,10 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email,
+        email,  // Maps to billing_email in Repo B (used for idempotency)
         organization_name: name,  // Repo B expects organization_name
-        company,  // Optional
         agent_id: agent_id || `agent-${Date.now()}`,
-        integration: 'mcp-gateway',
+        // Note: company field is not used by Repo B tenant creation
       }),
     });
 
@@ -384,8 +405,10 @@ export default async function handler(req, res) {
 │  governance-hub.supabase.co             │
 │                                          │
 │  POST /tenants/create                   │
-│    → Creates tenant record               │
+│    → Creates tenant record (idempotent) │
 │    → Returns tenant_uuid                 │
+│    → If exists (same billing_email+name)│
+│       returns existing tenant           │
 │                                          │
 │  POST /api-keys/create                  │
 │    → GENERATES API KEY HERE            │
@@ -413,6 +436,12 @@ export default async function handler(req, res) {
 - **Security:** API key generation logic centralized
 - **Consistency:** Same generation logic for all consumers
 - **Audit:** All key creation logged in Repo B
+
+### ✅ Tenant Creation Idempotency
+- **Unique constraint:** Tenants are unique on `(billing_email, name)`
+- **Idempotent behavior:** Calling `POST /tenants/create` multiple times with the same `billing_email` and `name` returns the existing tenant
+- **Field mapping:** `email` from signup request maps to `billing_email` in Repo B
+- **Safe retries:** Network errors can be safely retried without creating duplicates
 
 ---
 

@@ -127,11 +127,19 @@ The edge function maps `name` to `organization_name` when calling Repo B's tenan
 2. **Submits signup form** with `name` and `email`
 3. **Edge function** (`/api/consumer/signup`) processes request:
    - Validates `name` and `email` are present
-   - Calls Repo B to create tenant
+   - Calls Repo B to create tenant (idempotent - returns existing if same `billing_email` + `name`)
    - Calls Repo B to generate API key
    - Returns API key in response
 4. **Consumer receives** API key (save it - won't be shown again)
 5. **Consumer can use** gateway immediately with free tier limits
+
+### Idempotent Signup
+
+The signup endpoint is **idempotent** - if a user signs up multiple times with the same email and name:
+- ✅ Returns the **existing tenant** and API key (doesn't create duplicate)
+- ✅ No duplicate tenants created
+- ✅ Safe to retry on network errors
+- ✅ Prevents duplicate signups from multiple form submissions
 
 ---
 
@@ -148,8 +156,16 @@ The signup endpoint is implemented as a Vercel edge function (or similar) that:
 ### Repo B Integration
 
 The edge function calls:
-1. `POST /functions/v1/tenants/create` - Creates tenant (maps `name` → `organization_name`)
+1. `POST /functions/v1/tenants/create` - Creates tenant (idempotent on `billing_email` + `name`)
+   - Maps `email` → `billing_email` (used for idempotency)
+   - Maps `name` → `organization_name`
+   - If tenant with same `billing_email` + `name` exists, returns existing tenant
 2. `POST /functions/v1/api-keys/create` - Generates API key
+
+**Idempotency:** If a user signs up multiple times with the same email and name:
+- ✅ Returns the **existing tenant** (doesn't create duplicate)
+- ✅ Safe to retry on network errors
+- ✅ Prevents duplicate tenants from multiple signup attempts
 
 See `SIGNUP-IMPLEMENTATION-GUIDE.md` for complete implementation examples.
 
