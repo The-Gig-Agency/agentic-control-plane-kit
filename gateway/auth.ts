@@ -148,9 +148,16 @@ export async function extractTenantFromApiKey(
     const tenantId = data.data?.tenant_id || data.tenant_id;
 
     if (!tenantId) {
-      console.error('[Auth] API key lookup response missing tenant_id:', JSON.stringify(data));
+      console.error('[Auth] API key lookup failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: JSON.stringify(data),
+        lookupUrl: lookupUrl,
+      });
       throw new Error('Tenant ID not found in response');
     }
+    
+    console.log('[Auth] API key lookup successful:', { tenantId, lookupUrl });
 
     // Cache result (if cache implemented)
     // await tenantCache.set(apiKey, tenantId, 3600000); // 1 hour
