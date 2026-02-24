@@ -289,21 +289,35 @@ export class MCPClient {
 }
 
 /**
- * Client manager - manages MCP clients for all processes
+ * Client manager - manages MCP clients for all processes (stdio and HTTP)
  */
 export class MCPClientManager {
-  private clients: Map<string, MCPClient> = new Map();
+  private stdioClients: Map<string, MCPClient> = new Map();
+  private httpClients: Map<string, any> = new Map(); // HttpMCPClient
 
   /**
-   * Get or create client for a process
+   * Get or create client for a process (supports both stdio and HTTP)
    */
-  async getClient(process: MCPProcess): Promise<MCPClient> {
-    let client = this.clients.get(process.id);
-    
+  async getClient(process: MCPProcess): Promise<MCPClient | any> {
+    const serverType = process.config.server_type || (process.config.url ? 'http' : 'stdio');
+
+    if (serverType === 'http') {
+      // HTTP-based MCP server
+      let httpClient = this.httpClients.get(process.id);
+      if (!httpClient) {
+        const { HttpMCPClient } = await import('./http-mcp-client.ts');
+        httpClient = new HttpMCPClient(process.config);
+        this.httpClients.set(process.id, httpClient);
+      }
+      return httpClient;
+    }
+
+    // Stdio-based MCP server
+    let client = this.stdioClients.get(process.id);
     if (!client) {
       client = new MCPClient(process);
       await client.initialize();
-      this.clients.set(process.id, client);
+      this.stdioClients.set(process.id, client);
     }
 
     return client;
@@ -313,10 +327,16 @@ export class MCPClientManager {
    * Remove client
    */
   async removeClient(serverId: string): Promise<void> {
-    const client = this.clients.get(serverId);
-    if (client) {
-      await client.close();
-      this.clients.delete(serverId);
+    const stdioClient = this.stdioClients.get(serverId);
+    if (stdioClient) {
+      await stdioClient.close();
+      this.stdioClients.delete(serverId);
+    }
+
+    const httpClient = this.httpClients.get(serverId);
+    if (httpClient) {
+      // HTTP clients don't need explicit closing
+      this.httpClients.delete(serverId);
     }
   }
 
@@ -324,9 +344,10 @@ export class MCPClientManager {
    * Close all clients
    */
   async closeAll(): Promise<void> {
-    for (const [serverId, client] of this.clients.entries()) {
+    for (const [serverId, client] of this.stdioClients.entries()) {
       await client.close();
     }
-    this.clients.clear();
+    this.stdioClients.clear();
+    this.httpClients.clear();
   }
 }

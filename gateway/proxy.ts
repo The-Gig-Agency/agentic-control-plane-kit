@@ -718,7 +718,7 @@ export class MCPProxy {
       );
     }
 
-    // Get or create MCP client for this process
+    // Get or create MCP client for this process (stdio or HTTP)
     let client;
     try {
       client = await this.clientManager.getClient(process);
@@ -731,13 +731,17 @@ export class MCPProxy {
       );
     }
 
-    // Check if client is ready
-    if (!client.isReady()) {
-      throw new ProcessError(
-        `Server "${serverId}" is not ready`,
-        serverId
-      );
+    // Check if client is ready (HTTP clients are always ready, stdio clients need process check)
+    const serverType = process.config.server_type || (process.config.url ? 'http' : 'stdio');
+    if (serverType === 'stdio') {
+      if (!client.isReady || !client.isReady()) {
+        throw new ProcessError(
+          `Server "${serverId}" is not ready`,
+          serverId
+        );
+      }
     }
+    // HTTP clients don't need isReady check (they're stateless)
 
     // Call method via MCP client with retries
     try {

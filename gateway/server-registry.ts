@@ -13,8 +13,14 @@ export interface RepoBServerConfig {
   id: string;
   server_id: string;
   name: string;
+  // For stdio-based servers
   command: string | null;
   args: string[] | null;
+  // For HTTP-based servers
+  server_type?: 'stdio' | 'http';
+  url?: string | null;
+  http_headers?: Record<string, string> | null;
+  // Common fields
   tool_prefix: string;
   enabled: boolean;
   mode?: 'hosted' | 'self_hosted';
@@ -171,17 +177,36 @@ export class ServerRegistry {
             env: repoBServer.connector_config ? this.configToEnv(repoBServer.connector_config) : undefined,
           };
         } else {
-          // Self-hosted mode: use command/args directly
-          if (!repoBServer.command || !repoBServer.args) {
-            console.warn(`[REGISTRY] Server "${repoBServer.server_id}" is in self_hosted mode but missing command/args, skipping`);
-            continue;
-          }
+          // Self-hosted mode: check server_type
+          const serverType = repoBServer.server_type || 'stdio';
+          
+          if (serverType === 'http') {
+            // HTTP-based MCP server
+            if (!repoBServer.url) {
+              console.warn(`[REGISTRY] Server "${repoBServer.server_id}" is HTTP type but missing url, skipping`);
+              continue;
+            }
 
-          serverConfig = {
-            command: repoBServer.command,
-            args: repoBServer.args,
-            tool_prefix: repoBServer.tool_prefix,
-          };
+            serverConfig = {
+              server_type: 'http',
+              url: repoBServer.url,
+              http_headers: repoBServer.http_headers || {},
+              tool_prefix: repoBServer.tool_prefix,
+            };
+          } else {
+            // Stdio-based MCP server
+            if (!repoBServer.command || !repoBServer.args) {
+              console.warn(`[REGISTRY] Server "${repoBServer.server_id}" is stdio type but missing command/args, skipping`);
+              continue;
+            }
+
+            serverConfig = {
+              server_type: 'stdio',
+              command: repoBServer.command,
+              args: repoBServer.args,
+              tool_prefix: repoBServer.tool_prefix,
+            };
+          }
         }
 
         serverMap.set(repoBServer.server_id, serverConfig);

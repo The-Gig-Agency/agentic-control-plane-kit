@@ -56,8 +56,14 @@ export interface MCPPrompt {
 
 // Gateway Configuration Types
 export interface ServerConfig {
-  command: string;
-  args: string[];
+  // For stdio-based servers
+  command?: string;
+  args?: string[];
+  // For HTTP-based servers
+  url?: string;
+  http_headers?: Record<string, string>;
+  // Common fields
+  server_type?: 'stdio' | 'http'; // Default: 'stdio'
   tool_prefix: string; // REQUIRED - prevents collisions
   env?: Record<string, string>;
 }

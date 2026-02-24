@@ -94,6 +94,93 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
       });
     }
 
+    // Public API documentation (no auth required)
+    if ((path === '/docs' || path === '/openapi.json') && req.method === 'GET') {
+      const docs = {
+        openapi: '3.0.0',
+        info: {
+          title: 'Echelon MCP Gateway API',
+          version: '1.0.0',
+          description: 'Hosted, governed proxy service for the Model Context Protocol (MCP)',
+        },
+        servers: [
+          {
+            url: 'https://gateway.buyechelon.com',
+            description: 'Production gateway',
+          },
+        ],
+        paths: {
+          '/meta.discover': {
+            get: {
+              summary: 'Discover gateway capabilities',
+              description: 'Public endpoint to discover gateway capabilities and signup information',
+              responses: {
+                '200': {
+                  description: 'Discovery information',
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          gateway: {
+                            type: 'object',
+                            properties: {
+                              signup_api_base: { type: 'string', example: 'https://www.buyechelon.com' },
+                              signup_endpoint: { type: 'string', example: '/api/consumer/signup' },
+                              registry_api_base: { type: 'string', example: 'https://governance-hub.supabase.co' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '/mcp': {
+            post: {
+              summary: 'MCP protocol endpoint',
+              description: 'Main MCP protocol endpoint (requires X-API-Key)',
+              security: [{ ApiKeyAuth: [] }],
+              requestBody: {
+                required: true,
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        jsonrpc: { type: 'string', example: '2.0' },
+                        method: { type: 'string', example: 'tools/list' },
+                        params: { type: 'object' },
+                      },
+                    },
+                  },
+                },
+              },
+              responses: {
+                '200': { description: 'MCP response' },
+                '401': { description: 'X-API-Key header required' },
+              },
+            },
+          },
+        },
+        components: {
+          securitySchemes: {
+            ApiKeyAuth: {
+              type: 'apiKey',
+              in: 'header',
+              name: 'X-API-Key',
+              description: 'API key obtained from signup endpoint',
+            },
+          },
+        },
+      };
+      return new Response(JSON.stringify(docs, null, 2), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Discovery endpoint (public, no API key required)
     if (path === '/meta.discover' && req.method === 'GET') {
       try {
@@ -108,6 +195,10 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         } catch (error) {
           // Config might not exist in serverless - return basic discovery info
           console.warn('[HTTP] Config not found, returning basic discovery info:', error);
+          const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
+          const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+          const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
+          
           return new Response(JSON.stringify({
             jsonrpc: '2.0',
             id: null,
@@ -116,7 +207,12 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                 name: 'Echelon MCP Gateway',
                 url: 'https://gateway.buyechelon.com',
                 registration_required: true,
-                registration_url: 'https://www.buyechelon.com/consumer',
+                registration_url: `${signupApiBase}/consumer`,
+                // API endpoints for programmatic signup
+                signup_api_base: signupApiBase,
+                signup_endpoint: '/api/consumer/signup',
+                registry_api_base: platformUrl,
+                docs_url: docsUrl,
               },
               servers: [],
               capabilities: {

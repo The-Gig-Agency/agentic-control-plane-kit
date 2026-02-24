@@ -19,7 +19,7 @@ export class ProcessManager {
   private restartDelay = 1000; // 1 second
 
   /**
-   * Spawn a downstream MCP server process
+   * Spawn a downstream MCP server process (or register HTTP server)
    */
   async spawnServer(
     serverId: string,
@@ -32,12 +32,41 @@ export class ProcessManager {
       return existing;
     }
 
-    console.log(`[PROCESS] Spawning server "${serverId}": ${config.command} ${config.args.join(' ')}`);
+    const serverType = config.server_type || (config.url ? 'http' : 'stdio');
+
+    // HTTP-based servers don't need process spawning
+    if (serverType === 'http') {
+      if (!config.url) {
+        throw new ConfigurationError(`Invalid HTTP server config for "${serverId}": url is required`);
+      }
+
+      console.log(`[PROCESS] Registering HTTP server "${serverId}": ${config.url}`);
+
+      // Create a virtual process for HTTP servers (for compatibility)
+      const mcpProcess: MCPProcess = {
+        id: serverId,
+        process: null as any, // HTTP servers don't have a process
+        config,
+        healthy: true,
+        lastHealthCheck: Date.now(),
+        restartCount: 0,
+      };
+
+      this.processes.set(serverId, mcpProcess);
+      return mcpProcess;
+    }
+
+    // Stdio-based servers require process spawning
+    console.log(`[PROCESS] Spawning stdio server "${serverId}": ${config.command} ${config.args?.join(' ')}`);
 
     try {
       // Validate command exists (basic check)
       if (!config.command || config.command.trim() === '') {
         throw new ConfigurationError(`Invalid command for server "${serverId}": command is empty`);
+      }
+
+      if (!config.args || config.args.length === 0) {
+        throw new ConfigurationError(`Invalid args for server "${serverId}": args are required`);
       }
 
       // Build environment variables

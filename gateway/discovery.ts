@@ -13,8 +13,13 @@ export interface DiscoveryInfo {
   gateway_version: string;
   name: string;
   description: string;
-  registration_url?: string;
+  registration_url?: string; // Web page URL (for humans)
   registration_required: boolean;
+  // API endpoints for programmatic signup
+  signup_api_base?: string; // Base URL for signup API (e.g., https://www.buyechelon.com)
+  signup_endpoint?: string; // Exact signup endpoint path (e.g., /api/consumer/signup)
+  registry_api_base?: string; // Base URL for MCP registry/connector catalog (e.g., https://governance-hub.supabase.co)
+  docs_url?: string; // Public documentation URL
   available_servers: ServerDiscoveryInfo[];
   capabilities: {
     tools: boolean;
@@ -91,13 +96,23 @@ export async function getDiscoveryInfo(
     });
   }
 
+  // Get platform URL from environment or use default
+  const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+  const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
+  const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
+
   return {
     gateway_id: config.kernel.kernelId,
     gateway_version: config.kernel.version,
     name: 'Echelon MCP Gateway',
     description: 'Universal governance layer for Model Context Protocol (MCP) operations. Enforces policies, rate limits, and audit logging for all MCP tools, resources, prompts, and sampling.',
-    registration_url: registrationUrl || 'echelon://register',
-    registration_required: true, // Phase 1: requires registration
+    registration_url: registrationUrl || `${signupApiBase}/consumer`, // Web page for humans
+    registration_required: true,
+    // API endpoints for programmatic signup
+    signup_api_base: signupApiBase,
+    signup_endpoint: '/api/consumer/signup', // Public signup endpoint (no auth required)
+    registry_api_base: platformUrl, // Base URL for connector catalog and MCP server registration
+    docs_url: docsUrl,
     available_servers: servers,
     capabilities: {
       tools: true,
