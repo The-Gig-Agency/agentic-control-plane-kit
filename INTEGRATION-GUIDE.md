@@ -23,6 +23,23 @@ If you prefer manual integration or need custom setup, follow the steps below.
 - Django/Express/Supabase backend with existing API endpoints
 - Database with tenant isolation
 - API key authentication system (or ready to add one)
+- **Repo B tenant provisioning flow** (required for multi-tenant installs)
+
+#### Provisioning Tenant IDs (Required for Multi-Tenant)
+
+Repo B (Governance Hub) authorizes and audits **per tenant UUID**. That means each customer/brand in your SaaS must be mapped to a **Repo B tenant UUID**, and every request to Repo B must include the correct tenant UUID.
+
+**Recommended flow (at customer onboarding or API key creation):**
+1. Call Repo B `POST /functions/v1/tenants-create` with your kernel key.
+2. Store the returned `tenant_uuid` on your brand/customer record.
+3. When your API key is used, look up the brand → `tenant_uuid` mapping and pass it to Repo B in every `authorize` call.
+
+**Single-tenant installs:** you can set `ACP_TENANT_ID` once and skip per-brand mapping, but multi-tenant SaaS **must** store a tenant UUID per customer.
+
+**Required env vars for provisioning:**
+- `ACP_BASE_URL`
+- `ACP_KERNEL_KEY`
+- `ACP_KERNEL_ID`
 
 ### Step A: Vendor the Kit
 
