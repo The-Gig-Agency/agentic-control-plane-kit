@@ -115,7 +115,7 @@ export async function extractTenantFromApiKey(
   // Normalize platform URL - remove trailing /functions/v1 if present
   // (ACP_BASE_URL may already include it; prevents duplication)
   const baseUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
-  const lookupUrl = `${baseUrl}/functions/v1/api-keys/lookup`;
+  const lookupUrl = `${baseUrl}/functions/v1/api-keys-lookup`;
 
   // Check cache first (if implemented)
   // const cached = await tenantCache.get(apiKey);
