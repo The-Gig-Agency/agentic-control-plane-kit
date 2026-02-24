@@ -228,22 +228,44 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         }
         
         const { getDiscoveryInfo } = await import('./discovery.ts');
+        const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+        const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
         const discoveryInfo = await getDiscoveryInfo(
           config,
           processManager,
-          'https://www.buyechelon.com/consumer'
+          `${signupApiBase}/consumer`
         );
 
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
           id: null,
-          result: discoveryInfo,
+          result: {
+            gateway: {
+              gateway_id: discoveryInfo.gateway_id,
+              gateway_version: discoveryInfo.gateway_version,
+              name: discoveryInfo.name,
+              description: discoveryInfo.description,
+              registration_url: discoveryInfo.registration_url,
+              registration_required: discoveryInfo.registration_required,
+              // API endpoints for programmatic signup
+              signup_api_base: discoveryInfo.signup_api_base,
+              signup_endpoint: discoveryInfo.signup_endpoint,
+              registry_api_base: discoveryInfo.registry_api_base,
+              docs_url: discoveryInfo.docs_url,
+            },
+            servers: discoveryInfo.available_servers,
+            capabilities: discoveryInfo.capabilities,
+          },
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (error) {
         console.error('[HTTP] Discovery error:', error);
         // Return basic discovery info even on error
+        const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
+        const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+        const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
+        
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
           id: null,
@@ -252,7 +274,12 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               name: 'Echelon MCP Gateway',
               url: 'https://gateway.buyechelon.com',
               registration_required: true,
-              registration_url: 'https://www.buyechelon.com/consumer',
+              registration_url: `${signupApiBase}/consumer`,
+              // API endpoints for programmatic signup
+              signup_api_base: signupApiBase,
+              signup_endpoint: '/api/consumer/signup',
+              registry_api_base: platformUrl,
+              docs_url: docsUrl,
             },
             servers: [],
             capabilities: {
