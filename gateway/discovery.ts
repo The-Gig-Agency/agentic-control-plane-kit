@@ -26,6 +26,12 @@ export interface DiscoveryInfo {
     delete_server: string; // DELETE - Delete MCP server
     list_connectors: string; // GET - List available connectors from catalog
   };
+  // Governance endpoints - full URLs for policy management
+  governance_endpoints?: {
+    propose_policy: string; // POST - Propose a new policy/limit/runbook
+    list_policies: string; // GET - List policies for tenant (optional, if implemented)
+    simulate_policy: string; // POST - Simulate policy effect (optional, if implemented)
+  };
   docs_url?: string; // Public documentation URL
   available_servers: ServerDiscoveryInfo[];
   capabilities: {
@@ -104,10 +110,13 @@ export async function getDiscoveryInfo(
   }
 
   // Get platform URL from environment or use default
-  const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+  let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
   const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
   const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
 
+  // Normalize platform URL - remove trailing /functions/v1 if present
+  platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
+  
   // Build full registry endpoint URLs (hyphen format, not slash)
   const registryBase = `${platformUrl}/functions/v1`;
   const registryEndpoints = {
@@ -116,6 +125,11 @@ export async function getDiscoveryInfo(
     update_server: `${registryBase}/mcp-servers-update`, // PUT
     delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
     list_connectors: `${registryBase}/connectors-list`, // GET
+  };
+  
+  // Build governance endpoint URLs
+  const governanceEndpoints = {
+    propose_policy: `${registryBase}/policy-propose`, // POST - Propose policy/limit/runbook
   };
 
   return {
@@ -130,6 +144,8 @@ export async function getDiscoveryInfo(
     signup_endpoint: '/api/consumer/signup', // Public signup endpoint (no auth required)
     // Registry endpoints - full URLs (no path guessing needed)
     registry_endpoints: registryEndpoints,
+    // Governance endpoints - full URLs for policy management
+    governance_endpoints: governanceEndpoints,
     docs_url: docsUrl,
     available_servers: servers,
     capabilities: {

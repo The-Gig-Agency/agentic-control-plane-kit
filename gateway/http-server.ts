@@ -137,6 +137,13 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                                   list_connectors: { type: 'string' },
                                 },
                               },
+                              governance_endpoints: {
+                                type: 'object',
+                                properties: {
+                                  propose_policy: { type: 'string', example: 'https://governance-hub.supabase.co/functions/v1/policy-propose' },
+                                },
+                                description: 'Endpoints for proposing governance policies, limits, and runbooks',
+                              },
                             },
                           },
                         },
@@ -205,8 +212,11 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           // Config might not exist in serverless - return basic discovery info
           console.warn('[HTTP] Config not found, returning basic discovery info:', error);
           const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
-          const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+          let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
           const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
+          
+          // Normalize platform URL - remove trailing /functions/v1 if present
+          platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
           
           // Build full registry endpoint URLs (hyphen format, not slash)
           const registryBase = `${platformUrl}/functions/v1`;
@@ -232,6 +242,10 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                 signup_endpoint: '/api/consumer/signup',
                 // Registry endpoints - full URLs (no path guessing needed)
                 registry_endpoints: registryEndpoints,
+                // Governance endpoints - full URLs for policy management
+                governance_endpoints: {
+                  propose_policy: `${registryBase}/policy-propose`,
+                },
                 docs_url: docsUrl,
               },
               servers: [],
@@ -272,6 +286,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               signup_endpoint: discoveryInfo.signup_endpoint,
               // Registry endpoints - full URLs (no path guessing needed)
               registry_endpoints: discoveryInfo.registry_endpoints,
+              // Governance endpoints - full URLs for policy management
+              governance_endpoints: discoveryInfo.governance_endpoints,
               docs_url: discoveryInfo.docs_url,
             },
             servers: discoveryInfo.available_servers,
