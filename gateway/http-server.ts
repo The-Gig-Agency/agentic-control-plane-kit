@@ -8,6 +8,19 @@
 // Version stamp - shows what container is executing
 console.log("GATEWAY_BUILD", "2026-02-23T00:45Z", "git", Deno.env.get("FLY_IMAGE_REF") ?? "no-ref");
 
+// Sanitized env (never log secrets)
+const _acpBase = Deno.env.get("ACP_BASE_URL");
+const _acpKernelSet = !!Deno.env.get("ACP_KERNEL_KEY");
+let _acpOrigin = "(not set)";
+if (_acpBase) {
+  try {
+    _acpOrigin = new URL(_acpBase.replace(/\/functions\/v1\/?$/, '') + '/').origin;
+  } catch {
+    _acpOrigin = "(invalid URL)";
+  }
+}
+console.log("[Gateway] env", { ACP_BASE_URL: _acpOrigin, ACP_KERNEL_KEY_set: _acpKernelSet });
+
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { MCPRequest, MCPResponse } from './types.ts';
 import { extractTenantFromApiKey, extractActor } from './auth.ts';
@@ -359,10 +372,21 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
     let tenantId: string;
     try {
       tenantId = await extractTenantFromApiKey(apiKey);
-    } catch (error) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Gateway] extractTenantFromApiKey failed', { message: msg });
+
+      // TEMP: return details for debugging (gated by GATEWAY_DEBUG_ERR or non-prod)
+      const debugErr = Deno.env.get('GATEWAY_DEBUG_ERR') === '1' || Deno.env.get('ENVIRONMENT') !== 'production';
+      const baseUrl = Deno.env.get('ACP_BASE_URL')?.replace(/\/functions\/v1\/?$/, '') ?? '(not set)';
+      const lookupUrl = `${baseUrl}/functions/v1/api-keys-lookup`;
+
       return new Response(JSON.stringify({
         error: 'Invalid API key',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        ...(debugErr && {
+          details: msg,
+          lookup_url: lookupUrl,
+        }),
       }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

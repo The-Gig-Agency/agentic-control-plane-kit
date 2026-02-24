@@ -56,15 +56,11 @@ export function extractActor(
 
 /**
  * Validate API key (Phase 2 - placeholder)
- * 
- * Future implementation will:
- * - Validate API key format
- * - Lookup tenant mapping from Repo B
- * - Cache tenant mappings
+ *
+ * WARNING: This returns true for any non-empty key. NOT used in gateway flow
+ * (gateway uses extractTenantFromApiKey). Do not use for auth decisions.
  */
 export async function validateApiKey(apiKey: string): Promise<boolean> {
-  // Phase 2 implementation
-  // For now, return true if key exists
   return apiKey.length > 0;
 }
 
@@ -133,13 +129,15 @@ export async function extractTenantFromApiKey(
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('API key not found');
-      }
+      const bodyText = await response.text().catch(() => '');
       if (response.status === 401) {
-        throw new Error('Invalid API key');
+        // Kernel auth failed — ACP_KERNEL_KEY wrong or not recognized by Repo B
+        throw new Error(`KERNEL_AUTH_FAILED calling api-keys-lookup (${lookupUrl}) body=${bodyText}`);
       }
-      throw new Error(`API key lookup failed: ${response.status}`);
+      if (response.status === 404) {
+        throw new Error('API_KEY_NOT_FOUND');
+      }
+      throw new Error(`API_KEY_LOOKUP_FAILED status=${response.status} body=${bodyText}`);
     }
 
     const data = await response.json();
@@ -148,25 +146,16 @@ export async function extractTenantFromApiKey(
     const tenantId = data.data?.tenant_id || data.tenant_id;
 
     if (!tenantId) {
-      console.error('[Auth] API key lookup failed:', {
-        status: response.status,
-        statusText: response.statusText,
-        response: JSON.stringify(data),
-        lookupUrl: lookupUrl,
-      });
+      console.error('[Auth] API key lookup response missing tenant_id:', JSON.stringify(data));
       throw new Error('Tenant ID not found in response');
     }
-    
-    console.log('[Auth] API key lookup successful:', { tenantId, lookupUrl });
 
     // Cache result (if cache implemented)
     // await tenantCache.set(apiKey, tenantId, 3600000); // 1 hour
 
     return tenantId;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('not found')) {
-      throw new Error('Invalid API key');
-    }
+    // Re-throw as-is; caller distinguishes KERNEL_AUTH_FAILED vs API_KEY_NOT_FOUND
     throw error;
   }
 }
