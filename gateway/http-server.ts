@@ -240,6 +240,13 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
             delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
             list_connectors: `${registryBase}/connectors-list`, // GET
           };
+          const agentQuickstart = [
+            '1) Call meta.discover to get signup + registry endpoints.',
+            '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
+            '3) Until email is verified, keys are read-only (write scopes blocked).',
+            '4) Verify email via verify_email_endpoint using {token}.',
+            '5) After verification, write scopes unlock (register/update servers, propose policies).',
+          ];
           
           return new Response(JSON.stringify({
             jsonrpc: '2.0',
@@ -250,6 +257,11 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
                 url: 'https://gateway.buyechelon.com',
                 registration_required: true,
                 registration_url: `${signupApiBase}/consumer`,
+                verification_required_for_write: true,
+                verify_email_endpoint: `${registryBase}/verify-email`,
+                unverified_scopes: ['mcp.read', 'mcp.meta.discover'],
+                verified_scopes: ['mcp:read', 'mcp:write', 'mcp:register', 'mcp:delete', 'authorize', 'connectors:read', 'connectors:resolve'],
+                agent_quickstart: agentQuickstart,
                 // API endpoints for programmatic signup
                 signup_api_base: signupApiBase,
                 signup_endpoint: '/api/consumer/signup',
@@ -294,6 +306,11 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               description: discoveryInfo.description,
               registration_url: discoveryInfo.registration_url,
               registration_required: discoveryInfo.registration_required,
+              verification_required_for_write: discoveryInfo.verification_required_for_write,
+              verify_email_endpoint: discoveryInfo.verify_email_endpoint,
+              unverified_scopes: discoveryInfo.unverified_scopes,
+              verified_scopes: discoveryInfo.verified_scopes,
+              agent_quickstart: discoveryInfo.agent_quickstart,
               // API endpoints for programmatic signup
               signup_api_base: discoveryInfo.signup_api_base,
               signup_endpoint: discoveryInfo.signup_endpoint,
@@ -325,6 +342,13 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
           list_connectors: `${registryBase}/connectors-list`, // GET
         };
+        const agentQuickstart = [
+          '1) Call meta.discover to get signup + registry endpoints.',
+          '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
+          '3) Until email is verified, keys are read-only (write scopes blocked).',
+          '4) Verify email via verify_email_endpoint using {token}.',
+          '5) After verification, write scopes unlock (register/update servers, propose policies).',
+        ];
         
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
@@ -335,6 +359,11 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
               url: 'https://gateway.buyechelon.com',
               registration_required: true,
               registration_url: `${signupApiBase}/consumer`,
+              verification_required_for_write: true,
+              verify_email_endpoint: `${registryBase}/verify-email`,
+              unverified_scopes: ['mcp.read', 'mcp.meta.discover'],
+              verified_scopes: ['mcp:read', 'mcp:write', 'mcp:register', 'mcp:delete', 'authorize', 'connectors:read', 'connectors:resolve'],
+              agent_quickstart: agentQuickstart,
               // API endpoints for programmatic signup
               signup_api_base: signupApiBase,
               signup_endpoint: '/api/consumer/signup',

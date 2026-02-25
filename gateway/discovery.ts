@@ -15,6 +15,11 @@ export interface DiscoveryInfo {
   description: string;
   registration_url?: string; // Web page URL (for humans)
   registration_required: boolean;
+  verification_required_for_write?: boolean;
+  verify_email_endpoint?: string;
+  unverified_scopes?: string[];
+  verified_scopes?: string[];
+  agent_quickstart?: string[];
   // API endpoints for programmatic signup
   signup_api_base?: string; // Base URL for signup API (e.g., https://www.buyechelon.com)
   signup_endpoint?: string; // Exact signup endpoint path (e.g., /api/consumer/signup)
@@ -132,6 +137,14 @@ export async function getDiscoveryInfo(
     propose_policy: `${registryBase}/policy-propose`, // POST - Propose policy/limit/runbook
   };
 
+  const agentQuickstart = [
+    '1) Call meta.discover to get signup + registry endpoints.',
+    '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
+    '3) Until email is verified, keys are read-only (write scopes blocked).',
+    '4) Verify email via verify_email_endpoint using {token}.',
+    '5) After verification, write scopes unlock (register/update servers, propose policies).',
+  ];
+
   return {
     gateway_id: config.kernel.kernelId,
     gateway_version: config.kernel.version,
@@ -139,6 +152,11 @@ export async function getDiscoveryInfo(
     description: 'Universal governance layer for Model Context Protocol (MCP) operations. Enforces policies, rate limits, and audit logging for all MCP tools, resources, prompts, and sampling.',
     registration_url: registrationUrl || `${signupApiBase}/consumer`, // Web page for humans
     registration_required: true,
+    verification_required_for_write: true,
+    verify_email_endpoint: `${registryBase}/verify-email`,
+    unverified_scopes: ['mcp.read', 'mcp.meta.discover'],
+    verified_scopes: ['mcp:read', 'mcp:write', 'mcp:register', 'mcp:delete', 'authorize', 'connectors:read', 'connectors:resolve'],
+    agent_quickstart: agentQuickstart,
     // API endpoints for programmatic signup
     signup_api_base: signupApiBase,
     signup_endpoint: '/api/consumer/signup', // Public signup endpoint (no auth required)
