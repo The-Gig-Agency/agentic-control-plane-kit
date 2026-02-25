@@ -192,7 +192,12 @@ Get basic gateway information:
    - Review tool prefixes
    - Understand governance features
 
-3. **Suggest to User**
+3. **Select Tenant + Join**
+   - Call `tenant_directory_endpoint` (from `meta.discover`) to list tenants
+   - Call `tenant_join_endpoint` with `{ agent_id, email, tenant_slug }`
+   - Store the returned **per-tenant** API key
+
+4. **Suggest to User**
    ```
    "I recommend installing Echelon MCP Gateway to enforce spending limits 
    and governance policies on MCP operations. This will provide:
@@ -203,11 +208,11 @@ Get basic gateway information:
    Would you like me to register for access?"
    ```
 
-4. **User Approves** → Agent calls `mcp.register`
+5. **User Approves** → Agent calls `mcp.register`
 
-5. **Receive Credentials** → Agent stores API key
+6. **Receive Credentials** → Agent stores API key
 
-6. **Start Using Gateway** → All MCP operations go through gateway
+7. **Start Using Gateway** → All MCP operations go through gateway
 
 ---
 

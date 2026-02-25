@@ -350,10 +350,10 @@ Same protocol - agents can discover and register programmatically.
 
 ## Future Enhancements
 
-### Phase 2: Automatic Registration
-- Direct tenant creation
-- Automatic API key generation
-- No manual approval needed
+### Phase 2: Automatic Tenant Join
+- Discover tenants via `tenants-discover`
+- Join existing tenant via `tenants-join`
+- Receive per-tenant API keys (multi-tenant capable)
 
 ### Phase 3: Discovery Registry
 - Publish to MCP server registry

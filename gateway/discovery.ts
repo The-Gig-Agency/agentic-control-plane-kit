@@ -23,6 +23,8 @@ export interface DiscoveryInfo {
   // API endpoints for programmatic signup
   signup_api_base?: string; // Base URL for signup API (e.g., https://www.buyechelon.com)
   signup_endpoint?: string; // Exact signup endpoint path (e.g., /api/consumer/signup)
+  tenant_directory_endpoint?: string; // GET - Discover available tenants (Repo B)
+  tenant_join_endpoint?: string; // POST - Join a tenant and get a per-tenant key
   // Registry endpoints - full URLs (no guessing path format)
   registry_endpoints?: {
     list_servers: string; // GET - List MCP servers for tenant
@@ -138,11 +140,12 @@ export async function getDiscoveryInfo(
   };
 
   const agentQuickstart = [
-    '1) Call meta.discover to get signup + registry endpoints.',
-    '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
-    '3) Until email is verified, keys are read-only (write scopes blocked).',
-    '4) Verify email via verify_email_endpoint using {token}.',
-    '5) After verification, write scopes unlock (register/update servers, propose policies).',
+    '1) Call meta.discover to get tenant directory + join endpoints.',
+    '2) GET tenant_directory_endpoint to see available tenants.',
+    '3) POST tenant_join_endpoint with {agent_id,email,tenant_slug} to receive a per-tenant api_key.',
+    '4) Until email is verified, keys are read-only (write scopes blocked).',
+    '5) Verify email via verify_email_endpoint using {token}.',
+    '6) After verification, write scopes unlock (register/update servers, propose policies).',
   ];
 
   return {
@@ -160,6 +163,8 @@ export async function getDiscoveryInfo(
     // API endpoints for programmatic signup
     signup_api_base: signupApiBase,
     signup_endpoint: '/api/consumer/signup', // Public signup endpoint (no auth required)
+    tenant_directory_endpoint: `${registryBase}/tenants-discover`,
+    tenant_join_endpoint: `${registryBase}/tenants-join`,
     // Registry endpoints - full URLs (no path guessing needed)
     registry_endpoints: registryEndpoints,
     // Governance endpoints - full URLs for policy management

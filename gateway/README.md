@@ -225,6 +225,10 @@ Agents can discover the gateway and register for access programmatically:
 { "method": "mcp.status", "params": { "agent_id": "my-agent" } }
 ```
 
+Discovery response now includes:
+- `tenant_directory_endpoint` (GET discoverable tenants)
+- `tenant_join_endpoint` (POST join + receive per-tenant API key)
+
 See [Agent Discovery Guide](./docs/AGENT-DISCOVERY-GUIDE.md) for complete documentation.
 
 ## See Also
