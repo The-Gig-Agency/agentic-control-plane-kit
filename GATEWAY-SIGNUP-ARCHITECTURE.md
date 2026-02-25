@@ -89,19 +89,20 @@ DEFAULT_CORS_ORIGIN=https://www.buyechelon.com
    - Terms of service checkbox
 
 2. **Signup API Endpoint**
-   - **URL:** `POST /api/signup` or `/api/consumer/signup`
+   - **URL:** `POST /api/consumer/signup`
    - **Accepts:**
      ```json
      {
        "email": "consumer@example.com",
        "organization_name": "Consumer Corp",
-       "agent_id": "consumer-001" // optional
+       "agent_id": "consumer-001", // optional
+       "tenant_slug": "onsite-affiliate"
      }
      ```
 
 3. **Backend Signup Logic**
-   - Calls Repo B to create tenant
-   - Calls Repo B to generate API key
+   - Calls Repo B `tenants-join` to join selected tenant
+   - Receives a per-tenant API key
    - Sends welcome email with credentials
    - Returns API key to user (if programmatic)
 
@@ -110,43 +111,24 @@ DEFAULT_CORS_ORIGIN=https://www.buyechelon.com
 ```typescript
 // Signup service (on www.buyechelon.com)
 async function handleSignup(email: string, orgName: string) {
-  // 1. Create tenant in Repo B
+  // 1. Join tenant in Repo B
   const tenantResponse = await fetch(
-    'https://governance-hub.supabase.co/functions/v1/tenants/create',
+    'https://governance-hub.supabase.co/functions/v1/tenants-join',
     {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SIGNUP_SERVICE_KEY}`,
         'Content-Type': 'application/json',
+        // HMAC-signed headers (X-Client-Id, X-Timestamp, X-Signature)
       },
       body: JSON.stringify({
         email,
         organization_name: orgName,
-        integration: 'mcp-gateway',
+        tenant_slug: 'onsite-affiliate',
       }),
     }
   );
   
-  const { tenant_uuid } = await tenantResponse.json();
-  
-  // 2. Generate API key in Repo B
-  const apiKeyResponse = await fetch(
-    'https://governance-hub.supabase.co/functions/v1/api-keys/create',
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SIGNUP_SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tenant_id: tenant_uuid,
-        prefix: 'mcp_',
-        scopes: ['mcp.tools', 'mcp.resources', 'mcp.prompts', 'mcp.sampling'],
-      }),
-    }
-  );
-  
-  const { api_key } = await apiKeyResponse.json();
+  const { tenant_id, api_key } = await tenantResponse.json();
   
   // 3. Send welcome email
   await sendWelcomeEmail(email, {
@@ -155,7 +137,7 @@ async function handleSignup(email: string, orgName: string) {
   });
   
   // 4. Return credentials (or redirect to success page)
-  return { api_key, tenant_uuid };
+  return { api_key, tenant_id };
 }
 ```
 
