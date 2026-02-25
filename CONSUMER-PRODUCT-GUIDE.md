@@ -70,19 +70,20 @@ MCP Servers (Tools, Resources, Prompts)
 
 **Or use programmatic signup:**
 ```http
-POST https://www.buyechelon.com/api/signup
+POST https://www.buyechelon.com/api/consumer/signup
 Content-Type: application/json
 
 {
   "email": "your-email@example.com",
   "organization_name": "Your Company",
-  "agent_id": "your-agent-id"
+  "agent_id": "your-agent-id",
+  "tenant_slug": "onsite-affiliate"
 }
 ```
 
 **What happens:**
-- Tenant created in Governance Hub
-- API key generated for your account
+- Agent joins the selected tenant in Governance Hub
+- Per-tenant API key generated for your account
 - Free tier activated automatically
 - Credentials sent to your email
 

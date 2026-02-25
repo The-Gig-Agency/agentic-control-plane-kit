@@ -25,6 +25,8 @@
 - `signup_api_base` - Base URL for signup API (e.g., `https://www.buyechelon.com`)
 - `signup_endpoint` - Exact signup endpoint path (e.g., `/api/consumer/signup`)
 - `registry_api_base` - Base URL for MCP registry (e.g., `https://governance-hub.supabase.co`)
+- `tenant_directory_endpoint` - Discover available tenants (e.g., `/functions/v1/tenants-discover`)
+- `tenant_join_endpoint` - Join a tenant + receive per-tenant key (e.g., `/functions/v1/tenants-join`)
 - `docs_url` - Public documentation URL
 
 **New Discovery Response:**
@@ -39,6 +41,8 @@
       "signup_api_base": "https://www.buyechelon.com",
       "signup_endpoint": "/api/consumer/signup",
       "registry_api_base": "https://governance-hub.supabase.co",
+      "tenant_directory_endpoint": "https://governance-hub.supabase.co/functions/v1/tenants-discover",
+      "tenant_join_endpoint": "https://governance-hub.supabase.co/functions/v1/tenants-join",
       "docs_url": "https://github.com/The-Gig-Agency/echelon-control"
     }
   }
@@ -118,6 +122,7 @@
 **The main website (`www.buyechelon.com`) needs to expose a public signup API:**
 
 ### Endpoint: `POST /api/consumer/signup`
+Include `tenant_slug` so agents can select which tenant/service to join.
 
 **Requirements:**
 - ✅ **NO authentication required** (public endpoint)

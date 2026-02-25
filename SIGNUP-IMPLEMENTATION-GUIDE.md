@@ -10,9 +10,9 @@
 ### Where API Keys Are Actually Generated
 
 **Repo B (Governance Hub)** generates the API key via:
-- **Endpoint:** `POST /functions/v1/api-keys/create`
-- **Location:** `governance-hub/supabase/functions/api-keys-create/index.ts`
-- **Line 170:** `const apiKey = generateApiKey(prefix, 32);`
+- **Endpoint:** `POST /functions/v1/tenants-join`
+- **Location:** `governance-hub/supabase/functions/tenants-join/index.ts`
+- **Behavior:** Joins an existing tenant and issues a **per-tenant** API key for the agent.
 
 **The API key is generated and stored in Repo B, not on your main website.**
 
@@ -27,9 +27,10 @@
 ```json
 {
   "name": "Test Org",           // REQUIRED - Organization/company name
-  "email": "test@example.com",  // REQUIRED - User email (maps to billing_email for idempotency)
-  "company": "Optional Co",    // OPTIONAL - Additional company info (not used by Repo B)
-  "agent_id": "my-agent-001"    // OPTIONAL - Agent identifier
+  "email": "test@example.com",  // REQUIRED - User email (used for agent identity)
+  "company": "Optional Co",     // OPTIONAL - Additional company info
+  "agent_id": "my-agent-001",   // OPTIONAL - Agent identifier
+  "tenant_slug": "onsite-affiliate" // OPTIONAL - Join a specific tenant
 }
 ```
 
@@ -37,23 +38,22 @@
 
 ### Idempotency Behavior
 
-**Tenant creation is idempotent** based on `billing_email` + `name`:
-- ✅ If a tenant with the same `billing_email` and `name` already exists, **returns the existing tenant**
+**Tenant join is idempotent** per `email + tenant_slug`:
+- ✅ If the agent already joined the tenant, returns the existing key (or idempotent response)
 - ✅ Safe to call multiple times (e.g., retry on network error)
-- ✅ Prevents duplicate tenants from multiple signup attempts
-- ✅ `email` from signup request maps to `billing_email` in Repo B
+- ✅ Prevents duplicate keys unless `force_new_key=true`
 
 **Example:**
 ```typescript
-// First call - creates tenant
-POST /functions/v1/tenants/create
-{ email: "user@example.com", organization_name: "Test Org" }
-→ Returns: { tenant_uuid: "abc-123", ... }
+// First call - joins tenant + issues key
+POST /functions/v1/tenants-join
+{ email: "user@example.com", tenant_slug: "onsite-affiliate" }
+→ Returns: { tenant_id: "abc-123", api_key: "mcp_...", ... }
 
-// Second call (same email + name) - returns existing
-POST /functions/v1/tenants/create
-{ email: "user@example.com", organization_name: "Test Org" }
-→ Returns: { tenant_uuid: "abc-123", ... }  // Same tenant!
+// Second call (same email + tenant) - returns existing
+POST /functions/v1/tenants-join
+{ email: "user@example.com", tenant_slug: "onsite-affiliate" }
+→ Returns: { tenant_id: "abc-123", key_status: "existing", ... }
 ```
 
 **Response:**
@@ -61,6 +61,7 @@ POST /functions/v1/tenants/create
 {
   "ok": true,
   "tenant_id": "uuid",
+  "tenant_slug": "onsite-affiliate",
   "api_key": "mcp_abc123...",
   "api_key_id": "uuid",
   "gateway_url": "https://gateway.buyechelon.com",
@@ -72,7 +73,7 @@ POST /functions/v1/tenants/create
 ```bash
 curl -X POST https://www.buyechelon.com/api/consumer/signup \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test Org","email":"test@example.com"}'
+  -d '{"name":"Test Org","email":"test@example.com","tenant_slug":"onsite-affiliate"}'
 ```
 
 ---
@@ -85,6 +86,12 @@ curl -X POST https://www.buyechelon.com/api/consumer/signup \
 
 Create an edge function that calls Repo B:
 
+> **Important:** Repo B now requires **HMAC-signed** requests (not bearer auth).  
+> Use `SIGNUP_SERVICE_SECRET` to sign the body and send `X-Client-Id`, `X-Timestamp`, `X-Signature` headers.  
+> See `echelon-control/supabase/functions/consumer-signup/index.ts` for a working reference.
+>
+> If you see `Authorization: Bearer ...` in the examples below, treat it as **legacy** and replace with the HMAC headers above.
+
 **File:** `supabase/functions/consumer-signup/index.ts` (or similar)
 
 ```typescript
@@ -92,7 +99,7 @@ Create an edge function that calls Repo B:
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 
 const REPO_B_URL = Deno.env.get('REPO_B_URL')!; // e.g., https://governance-hub.supabase.co
-const SIGNUP_SERVICE_KEY = Deno.env.get('SIGNUP_SERVICE_KEY')!; // Kernel API key for signup service
+const SIGNUP_SERVICE_SECRET = Deno.env.get('SIGNUP_SERVICE_SECRET')!; // HMAC secret for signup service
 
 serve(async (req) => {
   if (req.method !== 'POST') {
@@ -110,21 +117,21 @@ serve(async (req) => {
       );
     }
 
-    // Step 1: Create tenant in Repo B (idempotent on billing_email + name)
-    // Note: If tenant with same billing_email + name exists, returns existing tenant
+    // Step 1: Join tenant in Repo B (idempotent on email + tenant_slug)
+    // Note: If tenant with same email + tenant_slug exists, returns existing tenant
     const tenantResponse = await fetch(
-      `${REPO_B_URL}/functions/v1/tenants/create`,
+      `${REPO_B_URL}/functions/v1/tenants-join`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${SIGNUP_SERVICE_KEY}`,
+          'Authorization': `Bearer ${SIGNUP_SERVICE_SECRET}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email, // Maps to billing_email in Repo B (used for idempotency)
+          email, // Maps to email in Repo B (used for idempotency)
           organization_name: name, // Repo B expects organization_name
           agent_id: agent_id || `agent-${Date.now()}`,
-          // Note: company field is not used by Repo B tenant creation
+          // Note: company field is not used by Repo B tenant join
         }),
       }
     );
@@ -145,7 +152,7 @@ serve(async (req) => {
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${SIGNUP_SERVICE_KEY}`,
+          'Authorization': `Bearer ${SIGNUP_SERVICE_SECRET}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -240,21 +247,21 @@ def consumer_signup(request):
         return JsonResponse({'error': 'Name and email are required'}, status=400)
     
     repo_b_url = os.environ.get('REPO_B_URL')
-    signup_service_key = os.environ.get('SIGNUP_SERVICE_KEY')
+    signup_service_key = os.environ.get('SIGNUP_SERVICE_SECRET')
     
-    # Step 1: Create tenant in Repo B (idempotent on billing_email + name)
-    # Note: If tenant with same billing_email + name exists, returns existing tenant
+    # Step 1: Join tenant in Repo B (idempotent on email + tenant_slug)
+    # Note: If tenant with same email + tenant_slug exists, returns existing tenant
     tenant_response = requests.post(
-        f'{repo_b_url}/functions/v1/tenants/create',
+        f'{repo_b_url}/functions/v1/tenants-join',
         headers={
             'Authorization': f'Bearer {signup_service_key}',
             'Content-Type': 'application/json',
         },
         json={
-            'email': email,  # Maps to billing_email in Repo B (used for idempotency)
+            'email': email,  # Maps to email in Repo B (used for idempotency)
             'organization_name': name,  # Repo B expects organization_name
             'agent_id': agent_id or f'agent-{int(time.time())}',
-            # Note: company field is not used by Repo B tenant creation
+            # Note: company field is not used by Repo B tenant join
         },
     )
     
@@ -316,22 +323,22 @@ export default async function handler(req, res) {
   }
   
   const repoBUrl = process.env.REPO_B_URL;
-  const signupServiceKey = process.env.SIGNUP_SERVICE_KEY;
+  const signupServiceKey = process.env.SIGNUP_SERVICE_SECRET;
 
   try {
-    // Step 1: Create tenant (idempotent on billing_email + name)
-    // Note: If tenant with same billing_email + name exists, returns existing tenant
-    const tenantRes = await fetch(`${repoBUrl}/functions/v1/tenants/create`, {
+    // Step 1: Join tenant (idempotent on email + tenant_slug)
+    // Note: If tenant with same email + tenant_slug exists, returns existing tenant
+    const tenantRes = await fetch(`${repoBUrl}/functions/v1/tenants-join`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${signupServiceKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email,  // Maps to billing_email in Repo B (used for idempotency)
+        email,  // Maps to email in Repo B (used for idempotency)
         organization_name: name,  // Repo B expects organization_name
         agent_id: agent_id || `agent-${Date.now()}`,
-        // Note: company field is not used by Repo B tenant creation
+        // Note: company field is not used by Repo B tenant join
       }),
     });
 
@@ -404,10 +411,10 @@ export default async function handler(req, res) {
 │  Repo B (Governance Hub)                │
 │  governance-hub.supabase.co             │
 │                                          │
-│  POST /tenants/create                   │
+│  POST /tenants-join                   │
 │    → Creates tenant record (idempotent) │
 │    → Returns tenant_uuid                 │
-│    → If exists (same billing_email+name)│
+│    → If exists (same email+name)│
 │       returns existing tenant           │
 │                                          │
 │  POST /api-keys/create                  │
@@ -437,10 +444,8 @@ export default async function handler(req, res) {
 - **Consistency:** Same generation logic for all consumers
 - **Audit:** All key creation logged in Repo B
 
-### ✅ Tenant Creation Idempotency
-- **Unique constraint:** Tenants are unique on `(billing_email, name)`
-- **Idempotent behavior:** Calling `POST /tenants/create` multiple times with the same `billing_email` and `name` returns the existing tenant
-- **Field mapping:** `email` from signup request maps to `billing_email` in Repo B
+### ✅ Tenant Join Idempotency
+- **Idempotent behavior:** Calling `POST /tenants-join` multiple times with the same `email + tenant_slug` returns the existing key (or idempotent response)
 - **Safe retries:** Network errors can be safely retried without creating duplicates
 
 ---
@@ -450,12 +455,10 @@ export default async function handler(req, res) {
 **On Main Website (Edge Function/API):**
 ```bash
 REPO_B_URL=https://governance-hub.supabase.co
-SIGNUP_SERVICE_KEY=acp_kernel_xxx  # Kernel API key for signup service
+SIGNUP_SERVICE_SECRET=your_hmac_secret  # HMAC secret for signup service
 ```
 
-**Note:** The `SIGNUP_SERVICE_KEY` should be a kernel API key registered in Repo B with permissions to:
-- Create tenants
-- Create API keys
+**Note:** The `SIGNUP_SERVICE_SECRET` is an HMAC secret that Repo B validates for `X-Client-Id: signup-service`.
 
 ---
 
@@ -463,7 +466,7 @@ SIGNUP_SERVICE_KEY=acp_kernel_xxx  # Kernel API key for signup service
 
 ### Main Website
 - [ ] Create edge function/API route: `/api/consumer-signup`
-- [ ] Implement tenant creation (calls Repo B)
+- [ ] Implement tenant join (calls Repo B)
 - [ ] Implement API key generation (calls Repo B)
 - [ ] Add error handling
 - [ ] Add input validation
@@ -472,7 +475,7 @@ SIGNUP_SERVICE_KEY=acp_kernel_xxx  # Kernel API key for signup service
 - [ ] Test signup flow
 
 ### Repo B (Already Implemented ✅)
-- [x] `POST /tenants/create` endpoint
+- [x] `POST /tenants-join` endpoint
 - [x] `POST /api-keys/create` endpoint
 - [x] API key generation logic
 - [x] Database schema
