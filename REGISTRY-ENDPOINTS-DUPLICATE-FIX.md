@@ -93,7 +93,7 @@ curl -X GET "https://gateway.buyechelon.com/meta.discover" | jq '.result.gateway
 ## CLI Commands to Push
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd /path/to/agentic-control-plane-kit
 
 git add gateway/discovery.ts gateway/http-server.ts REGISTRY-ENDPOINTS-DUPLICATE-FIX.md
 

@@ -68,11 +68,11 @@ This document outlines a comprehensive plan to integrate the **agentic-control-p
 **Location**: `ciq-automations/control-plane/`
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/ciq-automations
+cd /path/to/ciq-automations
 mkdir -p control-plane
-cp -r /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit/kernel ./control-plane/
-cp -r /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit/packs ./control-plane/
-cp -r /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit/config ./control-plane/
+cp -r /path/to/agentic-control-plane-kit/kernel ./control-plane/
+cp -r /path/to/agentic-control-plane-kit/packs ./control-plane/
+cp -r /path/to/agentic-control-plane-kit/config ./control-plane/
 ```
 
 **Files to copy:**
@@ -807,8 +807,8 @@ Add UI for:
 
 ## Resources
 
-- **Control Plane Kit**: `/Users/rastakit/tga-workspace/repos/agentic-control-plane-kit`
-- **CIQ Automations**: `/Users/rastakit/tga-workspace/repos/ciq-automations`
+- **Control Plane Kit**: `/path/to/agentic-control-plane-kit`
+- **CIQ Automations**: `/path/to/ciq-automations`
 - **Integration Guide**: `agentic-control-plane-kit/INTEGRATION-GUIDE.md`
 - **Architecture Doc**: `agentic-control-plane-kit/KERNEL-ARCHITECTURE.md`
 

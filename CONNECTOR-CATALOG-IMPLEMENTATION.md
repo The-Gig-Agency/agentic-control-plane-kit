@@ -305,7 +305,7 @@ X-API-Key: mcp_xxxxx
 ### Repo B
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/governance-hub
+cd /path/to/governance-hub
 
 # Add files
 git add supabase/migrations/20260223000003_add_connectors_catalog.sql
@@ -328,7 +328,7 @@ git push origin main
 ### Gateway (Repo A)
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd /path/to/agentic-control-plane-kit
 
 # Add updated file
 git add gateway/proxy.ts

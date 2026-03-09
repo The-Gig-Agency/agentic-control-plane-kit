@@ -3,7 +3,7 @@
 ## Step 1: Clone Repo C
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos
+cd /path/to/repos
 git clone https://github.com/The-Gig-Agency/key-vault-executor.git
 cd key-vault-executor
 ```

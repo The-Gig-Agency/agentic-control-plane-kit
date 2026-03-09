@@ -3,7 +3,8 @@
 
 set -e
 
-REPO_DIR="/Users/rastakit/tga-workspace/repos/agentic-control-plane-kit"
+# Resolve repository root from this script location
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_DIR"
 
 echo "🚀 Setting up agentic-control-plane-kit repository..."

@@ -176,7 +176,7 @@ const REPO_B_INTERNAL_SECRET = Deno.env.get('REPO_B_INTERNAL_SECRET');
 ### Repo B
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/governance-hub
+cd /path/to/governance-hub
 
 # Add new internal endpoints
 git add supabase/functions/internal-audit/index.ts
@@ -205,7 +205,7 @@ git push origin main
 ### Repo C
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/key-vault-executor
+cd /path/to/key-vault-executor
 
 # Update credentials-delete endpoint
 git add supabase/functions/credentials-delete/index.ts

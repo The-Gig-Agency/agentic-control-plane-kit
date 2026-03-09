@@ -84,7 +84,7 @@
 ## CLI Commands to Push
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd /path/to/agentic-control-plane-kit
 
 git add gateway/MCP-DEFAULT-RULE-PACK.md RULE-PACK-UPDATES.md
 

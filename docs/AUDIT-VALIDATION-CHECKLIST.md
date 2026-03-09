@@ -11,7 +11,7 @@ Before committing, run these three validation checks to prove the audit layer is
 **Run from Repo A root:**
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd /path/to/agentic-control-plane-kit
 grep -R "authorization\|api_key\|access_token\|refresh_token\|client_secret" . \
   --include="*.ts" --include="*.js" \
   | grep -v node_modules \

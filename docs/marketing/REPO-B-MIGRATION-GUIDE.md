@@ -3,7 +3,7 @@
 ## Step 1: Clone the New Repo
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos
+cd /path/to/repos
 git clone https://github.com/The-Gig-Agency/governance-hub.git
 cd governance-hub
 ```

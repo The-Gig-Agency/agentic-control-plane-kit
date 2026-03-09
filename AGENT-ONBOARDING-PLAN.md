@@ -14,7 +14,7 @@
 2. **api-docs-template** (Deployed Copy of Repo A)
    - ✅ **Copy changes from Agent Starter Kit**
    - This is the deployed version for leadscoring
-   - Location: Current folder (`/Users/rastakit/tga-workspace/repos/api-docs-template`)
+   - Location: Current folder (`/path/to/api-docs-template`)
 
 3. **governance-hub** (Repo B)
    - ✅ **Make changes and push**

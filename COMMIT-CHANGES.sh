@@ -1,7 +1,7 @@
 #!/bin/bash
 # Commit and push changes to agentic-control-plane-kit
 
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd "$(dirname "$0")"
 
 # Stage the CIQ automations plan
 git add CIQ-AUTOMATIONS-AGENTIC-PLAN.md

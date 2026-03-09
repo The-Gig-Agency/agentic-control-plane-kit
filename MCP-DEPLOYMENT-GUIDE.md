@@ -34,7 +34,7 @@
 ### Step 1: Deploy Migrations
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/governance-hub
+cd /path/to/governance-hub
 
 # Deploy all migrations
 supabase db push
@@ -106,7 +106,7 @@ openssl rand -hex 32
 ### Step 2: Deploy Migrations
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/key-vault-executor
+cd /path/to/key-vault-executor
 
 # Deploy all migrations
 supabase db push

@@ -209,7 +209,7 @@
 ### Repo B (governance-hub)
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/governance-hub
+cd /path/to/governance-hub
 
 git add supabase/migrations/20260225000000_add_email_verification.sql
 git add supabase/functions/verify-email/
@@ -229,7 +229,7 @@ git push origin main
 ### Repo A (agentic-control-plane-kit)
 
 ```bash
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd /path/to/agentic-control-plane-kit
 
 git add SIGNUP-SECURITY-IMPLEMENTATION.md SECURITY-IMPLEMENTATION-STATUS.md
 

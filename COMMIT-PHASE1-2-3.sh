@@ -1,7 +1,7 @@
 #!/bin/bash
 # Commit and push Phase 1, 2, and 3 changes
 
-cd /Users/rastakit/tga-workspace/repos/agentic-control-plane-kit
+cd "$(dirname "$0")"
 
 echo "📥 Pulling latest changes..."
 git pull
