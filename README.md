@@ -13,12 +13,20 @@ This kit provides:
 - **Bindings** — Repo-specific configuration layer
 - **Conformance Tests** — HTTP-based tests; run against any `/manage` endpoint
 
+## Evaluator Start Here
+
+If you're reviewing ACP from LinkedIn/GitHub, use this order:
+
+1. **Quick install (preferred):** [Quickstart](#quickstart)
+2. **Architecture model:** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)
+3. **Implementation details:** [INSTALL.md](./INSTALL.md)
+
 ## Quickstart
 
 ### Option A: Automated Installation (Recommended)
 
 ```bash
-# Install via CLI (auto-detects framework)
+# Preferred install path: CLI (auto-detects framework)
 npx echelon install
 
 # Or specify framework
@@ -37,17 +45,18 @@ See [installer/README.md](./installer/README.md) for details.
 
 ### Option B: Manual Installation
 
-See [INSTALL.md](./INSTALL.md) for the complete manual installation checklist.
+See [INSTALL.md](./INSTALL.md) for manual embedding and advanced setup.
 
-### 1. Install
+### Option C: Programmatic package usage (advanced)
 
 ```bash
 npm install agentic-control-plane-kit
-# or
-yarn add agentic-control-plane-kit
 ```
 
-### 2. Define Your Bindings
+Use this only when you want to import kernel code directly in an existing app.
+For most teams, `npx echelon install` is the faster and safer path.
+
+### 1. Define Your Bindings
 
 Create a `bindings.json` file:
 
@@ -74,7 +83,7 @@ Create a `bindings.json` file:
 }
 ```
 
-### 3. Implement Adapters
+### 2. Implement Adapters
 
 ```typescript
 import { Kernel, createSupabaseAdapter } from 'agentic-control-plane-kit';
@@ -93,7 +102,7 @@ const kernel = new Kernel({
 export default kernel.handler;
 ```
 
-### 4. Deploy
+### 3. Deploy
 
 The kernel exports a standard request handler that works with:
 - Supabase Edge Functions
@@ -224,7 +233,7 @@ serve(async (req) => {
 });
 ```
 
-### Step 1: Copy the Kit
+### Step 1: Copy the Kit (advanced/manual flow)
 
 ```bash
 # Option A: Install as npm package
@@ -233,6 +242,8 @@ npm install agentic-control-plane-kit
 # Option B: Copy kernel source into your repo
 cp -r node_modules/agentic-control-plane-kit/kernel ./src/manage
 ```
+
+This section is for manual/programmatic embedding. For most users, start with `npx echelon install`.
 
 ### Step 2: Create Bindings File
 
