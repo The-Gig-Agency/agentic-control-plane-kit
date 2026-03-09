@@ -156,7 +156,7 @@ Authorization decisions are cached using `decision_ttl_ms` from `AuthorizationRe
         "gateway/server.ts"
       ],
       "env": {
-        "ACP_BASE_URL": "https://governance-hub.supabase.co",
+        "ACP_BASE_URL": "https://your-governance-hub.supabase.co",
         "ACP_KERNEL_KEY": "kernel_key_here",
         "ACP_TENANT_ID": "tenant_uuid_here"
       }

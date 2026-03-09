@@ -184,7 +184,7 @@ The gateway now supports **dynamic server loading** from Repo B, allowing agents
 
 1. **Register a server:**
    ```bash
-   curl -X POST https://governance-hub.supabase.co/functions/v1/mcp-servers/register \
+   curl -X POST https://your-governance-hub.supabase.co/functions/v1/mcp-servers/register \
      -H "X-API-Key: mcp_xxxxx" \
      -H "Content-Type: application/json" \
      -d '{

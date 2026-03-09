@@ -113,7 +113,7 @@ DEFAULT_CORS_ORIGIN=https://www.buyechelon.com
 async function handleSignup(email: string, orgName: string) {
   // 1. Join tenant in Repo B
   const tenantResponse = await fetch(
-    'https://governance-hub.supabase.co/functions/v1/tenants-join',
+    'https://your-governance-hub.supabase.co/functions/v1/tenants-join',
     {
       method: 'POST',
       headers: {

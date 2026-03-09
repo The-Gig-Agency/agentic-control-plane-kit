@@ -24,7 +24,7 @@
 **Fix:** ✅ Updated `discovery.ts` to return:
 - `signup_api_base` - Base URL for signup API (e.g., `https://www.buyechelon.com`)
 - `signup_endpoint` - Exact signup endpoint path (e.g., `/api/consumer/signup`)
-- `registry_api_base` - Base URL for MCP registry (e.g., `https://governance-hub.supabase.co`)
+- `registry_api_base` - Base URL for MCP registry (e.g., `https://your-governance-hub.supabase.co`)
 - `tenant_directory_endpoint` - Discover available tenants (e.g., `/functions/v1/tenants-discover`)
 - `tenant_join_endpoint` - Join a tenant + receive per-tenant key (e.g., `/functions/v1/tenants-join`)
 - `docs_url` - Public documentation URL
@@ -40,9 +40,9 @@
       "registration_url": "https://www.buyechelon.com/consumer",
       "signup_api_base": "https://www.buyechelon.com",
       "signup_endpoint": "/api/consumer/signup",
-      "registry_api_base": "https://governance-hub.supabase.co",
-      "tenant_directory_endpoint": "https://governance-hub.supabase.co/functions/v1/tenants-discover",
-      "tenant_join_endpoint": "https://governance-hub.supabase.co/functions/v1/tenants-join",
+      "registry_api_base": "https://your-governance-hub.supabase.co",
+      "tenant_directory_endpoint": "https://your-governance-hub.supabase.co/functions/v1/tenants-discover",
+      "tenant_join_endpoint": "https://your-governance-hub.supabase.co/functions/v1/tenants-join",
       "docs_url": "https://github.com/The-Gig-Agency/echelon-control"
     }
   }
@@ -190,7 +190,7 @@ curl -X POST https://www.buyechelon.com/api/consumer/signup \
 ### 4. Test HTTP MCP Server Registration
 
 ```bash
-POST https://governance-hub.supabase.co/functions/v1/mcp-servers/register
+POST https://your-governance-hub.supabase.co/functions/v1/mcp-servers/register
 X-API-Key: mcp_xxxxx
 
 {

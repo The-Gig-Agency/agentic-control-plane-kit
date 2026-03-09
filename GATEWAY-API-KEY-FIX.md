@@ -17,7 +17,7 @@
 - `gateway/auth.ts` - Response parsing + URL normalization
 
 **Config Requirements:**
-- `ACP_BASE_URL` must point to the same Supabase project as signup (e.g. `https://bomgupxaxyypkbwnlzxb.supabase.co`).
+- `ACP_BASE_URL` must point to the same Supabase project as signup (e.g. `https://your-project.supabase.co`).
 - `ACP_KERNEL_KEY` must be a valid `acp_kernel_xxx` key registered in the `kernels` table. The api-keys-lookup endpoint verifies the tenant belongs to the **same organization** as the kernel — signup-created tenants and the gateway kernel must share an organization.
 
 **Testing:**

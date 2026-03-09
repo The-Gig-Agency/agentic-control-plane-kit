@@ -250,7 +250,7 @@ deno run --allow-env scripts/generate-cia-service-key.ts
 
 ```bash
 # Set CIQ Automations credentials
-export SUPABASE_URL=https://ciq-automations.supabase.co
+export SUPABASE_URL=https://your-project.supabase.co
 export SUPABASE_SERVICE_ROLE_KEY=your-key
 
 # Run script
@@ -264,7 +264,7 @@ deno run --allow-env --allow-net scripts/migrate-tenant-integrations.ts
 
 ```bash
 # Set Repo C credentials
-export REPO_C_URL=https://repo-c.supabase.co
+export REPO_C_URL=https://your-repo-c-project.supabase.co
 export REPO_C_SERVICE_KEY=cia_service_xxxxx
 export TEST_TENANT_ID=your-test-tenant-id
 
@@ -303,7 +303,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # For queries
 
 ```bash
 # Supabase Edge Functions → Secrets
-CIA_URL=https://repo-c.supabase.co
+CIA_URL=https://your-repo-c-project.supabase.co
 CIA_SERVICE_KEY=cia_service_xxxxx  # From generate script
 ```
 
@@ -311,7 +311,7 @@ CIA_SERVICE_KEY=cia_service_xxxxx  # From generate script
 
 ```bash
 # Railway → Variables
-CIA_URL=https://repo-c.supabase.co
+CIA_URL=https://your-repo-c-project.supabase.co
 CIA_SERVICE_KEY=cia_service_xxxxx  # From generate script
-KERNEL_ID=leadscore-kernel
+KERNEL_ID=your-kernel-id
 ```

@@ -16,13 +16,13 @@
 
 **Before:**
 ```typescript
-const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://your-governance-hub.supabase.co';
 const registryBase = `${platformUrl}/functions/v1`;
 ```
 
 **After:**
 ```typescript
-let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://your-governance-hub.supabase.co';
 // Normalize platform URL - remove trailing /functions/v1 if present
 platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
 const registryBase = `${platformUrl}/functions/v1`;
@@ -32,13 +32,13 @@ const registryBase = `${platformUrl}/functions/v1`;
 
 **Before:**
 ```typescript
-const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://your-governance-hub.supabase.co';
 const registryBase = `${platformUrl}/functions/v1`;
 ```
 
 **After:**
 ```typescript
-let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://your-governance-hub.supabase.co';
 // Normalize platform URL - remove trailing /functions/v1 if present
 platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
 const registryBase = `${platformUrl}/functions/v1`;
@@ -70,11 +70,11 @@ curl -X GET "https://gateway.buyechelon.com/meta.discover" | jq '.result.gateway
 **Expected:**
 ```json
 {
-  "list_servers": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/mcp-servers-list",
-  "register_server": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/mcp-servers-register",
-  "update_server": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/mcp-servers-update",
-  "delete_server": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/mcp-servers-delete",
-  "list_connectors": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/connectors-list"
+  "list_servers": "https://your-project.supabase.co/functions/v1/mcp-servers-list",
+  "register_server": "https://your-project.supabase.co/functions/v1/mcp-servers-register",
+  "update_server": "https://your-project.supabase.co/functions/v1/mcp-servers-update",
+  "delete_server": "https://your-project.supabase.co/functions/v1/mcp-servers-delete",
+  "list_connectors": "https://your-project.supabase.co/functions/v1/connectors-list"
 }
 ```
 

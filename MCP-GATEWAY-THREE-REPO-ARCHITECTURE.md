@@ -212,7 +212,7 @@ const authRequest = {
 ```typescript
 // Uses ControlPlaneAdapter from kernel
 const decision = await controlPlane.authorize(authRequest);
-// POST https://governance-hub.supabase.co/functions/v1/authorize
+// POST https://your-governance-hub.supabase.co/functions/v1/authorize
 ```
 
 **Step 3: Repo B Evaluates Policies**
@@ -253,7 +253,7 @@ const event = {
 ```typescript
 // Uses HttpAuditAdapter from kernel
 await auditAdapter.logEvent(event);
-// POST https://governance-hub.supabase.co/functions/v1/audit-ingest
+// POST https://your-governance-hub.supabase.co/functions/v1/audit-ingest
 ```
 
 **Step 3: Repo B Stores Audit Log**
@@ -328,7 +328,7 @@ Gateway (Repo A)
 
 **Required:**
 ```bash
-ACP_BASE_URL=https://governance-hub.supabase.co  # Repo B URL
+ACP_BASE_URL=https://your-governance-hub.supabase.co  # Repo B URL
 ACP_KERNEL_KEY=acp_kernel_xxxxx                  # Repo B API key
 ACP_TENANT_ID=be1b7614-...                       # Tenant UUID from Repo B
 ```

@@ -98,7 +98,7 @@ Create an edge function that calls Repo B:
 // Main website edge function (www.buyechelon.com)
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 
-const REPO_B_URL = Deno.env.get('REPO_B_URL')!; // e.g., https://governance-hub.supabase.co
+const REPO_B_URL = Deno.env.get('REPO_B_URL')!; // e.g., https://your-governance-hub.supabase.co
 const SIGNUP_SERVICE_SECRET = Deno.env.get('SIGNUP_SERVICE_SECRET')!; // HMAC secret for signup service
 
 serve(async (req) => {
@@ -454,7 +454,7 @@ export default async function handler(req, res) {
 
 **On Main Website (Edge Function/API):**
 ```bash
-REPO_B_URL=https://governance-hub.supabase.co
+REPO_B_URL=https://your-governance-hub.supabase.co
 SIGNUP_SERVICE_SECRET=your_hmac_secret  # HMAC secret for signup service
 ```
 

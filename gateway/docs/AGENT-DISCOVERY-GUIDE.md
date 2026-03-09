@@ -128,8 +128,8 @@ Get basic gateway information:
   "id": 3,
   "result": {
     "registered": false,
-    "registration_url": "https://governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com",
-    "message": "Registration required. Visit https://governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com to complete onboarding and receive your API key. After registration, you can use the gateway to access MCP servers with governance enforcement."
+    "registration_url": "https://your-governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com",
+    "message": "Registration required. Visit https://your-governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com to complete onboarding and receive your API key. After registration, you can use the gateway to access MCP servers with governance enforcement."
   }
 }
 ```
@@ -141,7 +141,7 @@ Get basic gateway information:
   "id": 3,
   "result": {
     "registered": true,
-    "tenant_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+    "tenant_id": "00000000-0000-0000-0000-000000000000",
     "api_key": "mcp_...",
     "api_key_prefix": "mcp_",
     "message": "Registration successful. Use the provided API key to access the gateway."
@@ -169,7 +169,7 @@ Get basic gateway information:
   "id": 4,
   "result": {
     "registered": true,
-    "tenant_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+    "tenant_id": "00000000-0000-0000-0000-000000000000",
     "status": "active",
     "message": "Agent is registered and active"
   }
@@ -246,7 +246,7 @@ Get basic gateway information:
         "gateway/server.ts"
       ],
       "env": {
-        "ACP_BASE_URL": "https://governance-hub.supabase.co",
+        "ACP_BASE_URL": "https://your-governance-hub.supabase.co",
         "ACP_KERNEL_KEY": "kernel_key_here",
         "ACP_TENANT_ID": "tenant_uuid_here"
       }

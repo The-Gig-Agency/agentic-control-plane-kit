@@ -215,7 +215,7 @@
 
 2. **Call Verify Email Endpoint**
    ```typescript
-   const res = await fetch('https://governance-hub.supabase.co/functions/v1/verify-email', {
+   const res = await fetch('https://your-governance-hub.supabase.co/functions/v1/verify-email', {
      method: 'POST',
      headers: { 'Content-Type': 'application/json' },
      body: JSON.stringify({ verification_token: token }),

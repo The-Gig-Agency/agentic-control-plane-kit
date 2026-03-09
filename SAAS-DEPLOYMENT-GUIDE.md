@@ -531,7 +531,7 @@ DATABASE_URL=postgresql://...
 # Optional: Repo B (Governance Hub)
 GOVERNANCE_HUB_URL=https://xxx.supabase.co
 ACP_KERNEL_KEY=acp_kernel_xxxxx  # Generated in Governance Hub
-GOVERNANCE_TENANT_ID=be1b7614-60ad-4e77-8661-cb4fcba9b314  # Tenant UUID registered in Repo B (required for Repo B integration)
+GOVERNANCE_TENANT_ID=00000000-0000-0000-0000-000000000000  # Tenant UUID registered in Repo B (required for Repo B integration)
 
 # Optional: Repo C (Key Vault Executor)
 CIA_URL=https://yyy.supabase.co

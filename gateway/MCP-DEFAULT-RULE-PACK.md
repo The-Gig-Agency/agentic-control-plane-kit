@@ -401,14 +401,14 @@ curl -X GET "https://gateway.buyechelon.com/meta.discover" | jq '.result.gateway
 **Expected Response:**
 ```json
 {
-  "propose_policy": "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/policy-propose"
+  "propose_policy": "https://your-project.supabase.co/functions/v1/policy-propose"
 }
 ```
 
 ### Step 3: Propose a Policy
 
 ```bash
-curl -X POST "https://bomgupxaxyypkbwnlzxb.supabase.co/functions/v1/policy-propose" \
+curl -X POST "https://your-project.supabase.co/functions/v1/policy-propose" \
   -H "X-API-Key: mcp_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{

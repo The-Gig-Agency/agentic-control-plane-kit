@@ -651,7 +651,7 @@ deno run --allow-net --allow-run --allow-read --allow-env gateway/server.ts
         "gateway/server.ts"
       ],
       "env": {
-        "ACP_BASE_URL": "https://governance-hub.supabase.co",
+        "ACP_BASE_URL": "https://your-governance-hub.supabase.co",
         "ACP_KERNEL_KEY": "kernel_key_here",
         "ACP_TENANT_ID": "tenant_uuid_here"
       }
@@ -815,7 +815,7 @@ Agents can discover the gateway programmatically via MCP protocol:
 
 **Registration URL Protocol:**
 - `echelon://register` - Custom protocol for registration
-- Or HTTP URL: `https://governance-hub.supabase.co/onboard/mcp-gateway?agent_id=...`
+- Or HTTP URL: `https://your-governance-hub.supabase.co/onboard/mcp-gateway?agent_id=...`
 
 **Benefits:**
 - ✅ Organic discovery (agents find gateway naturally)

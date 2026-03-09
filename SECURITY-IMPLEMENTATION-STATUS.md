@@ -157,7 +157,7 @@
 
 2. **Verify Email**
    ```bash
-   curl -X POST https://governance-hub.supabase.co/functions/v1/verify-email \
+   curl -X POST https://your-governance-hub.supabase.co/functions/v1/verify-email \
      -H "Content-Type: application/json" \
      -d '{"verification_token":"..."}'
    ```

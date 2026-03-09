@@ -123,7 +123,7 @@ All discovery endpoints are **public** (no authentication required) to enable or
   "id": 3,
   "result": {
     "registered": false,
-    "registration_url": "https://governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com",
+    "registration_url": "https://your-governance-hub.supabase.co/onboard/mcp-gateway?agent_id=openclaw-001&email=agent@example.com",
     "message": "Registration required. Visit [URL] to complete onboarding..."
   }
 }
@@ -136,7 +136,7 @@ All discovery endpoints are **public** (no authentication required) to enable or
   "id": 3,
   "result": {
     "registered": true,
-    "tenant_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+    "tenant_id": "00000000-0000-0000-0000-000000000000",
     "api_key": "mcp_abc123...",
     "api_key_prefix": "mcp_",
     "message": "Registration successful. Use the provided API key to access the gateway."
@@ -167,7 +167,7 @@ All discovery endpoints are **public** (no authentication required) to enable or
   "id": 4,
   "result": {
     "registered": true,
-    "tenant_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+    "tenant_id": "00000000-0000-0000-0000-000000000000",
     "status": "active",
     "message": "Agent is registered and active"
   }
@@ -326,7 +326,7 @@ if (status.registered && status.status === 'active') {
       "command": "deno",
       "args": ["run", "gateway/server.ts"],
       "env": {
-        "ACP_BASE_URL": "https://governance-hub.supabase.co",
+        "ACP_BASE_URL": "https://your-governance-hub.supabase.co",
         "ACP_KERNEL_KEY": "...",
         "ACP_TENANT_ID": "..."
       }

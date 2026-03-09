@@ -396,7 +396,7 @@ const manageRouter = createManageRouter({
 # CIA_SERVICE_KEY_PEPPER
 
 # Add/Update:
-CIA_URL=https://repo-c-project.supabase.co  # Repo C URL
+CIA_URL=https://your-repo-c-project.supabase.co  # Repo C URL
 CIA_SERVICE_KEY=cia_service_xxxxx  # New service key from Repo C
 ```
 
@@ -416,7 +416,7 @@ import os
 executor = HttpExecutorAdapter(
     cia_url=os.environ.get('CIA_URL'),
     cia_service_key=os.environ.get('CIA_SERVICE_KEY'),
-    kernel_id=os.environ.get('KERNEL_ID', 'leadscore-kernel')
+    kernel_id=os.environ.get('KERNEL_ID', 'your-kernel-id')
 )
 
 manage_router = createManageRouter({
@@ -430,9 +430,9 @@ manage_router = createManageRouter({
 **In Railway Dashboard → Variables:**
 
 ```bash
-CIA_URL=https://repo-c-project.supabase.co
+CIA_URL=https://your-repo-c-project.supabase.co
 CIA_SERVICE_KEY=cia_service_xxxxx  # New service key from Repo C
-KERNEL_ID=leadscore-kernel
+KERNEL_ID=your-kernel-id
 ```
 
 ---
@@ -457,7 +457,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # For tenant_integrations queri
 
 1. **Test service key authentication:**
    ```bash
-   curl -X POST https://repo-c.supabase.co/functions/v1/execute \
+   curl -X POST https://your-repo-c-project.supabase.co/functions/v1/execute \
      -H "Authorization: Bearer cia_service_xxxxx" \
      -H "Content-Type: application/json" \
      -d '{
@@ -476,7 +476,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # For tenant_integrations queri
 
 1. **Call CIQ Automations `/manage`:**
    ```bash
-   curl -X POST https://ciq-automations.supabase.co/functions/v1/manage \
+   curl -X POST https://your-project.supabase.co/functions/v1/manage \
      -H "X-API-Key: ciq_xxxxx" \
      -H "Content-Type: application/json" \
      -d '{"action": "shopify.products.list", "params": {}}'

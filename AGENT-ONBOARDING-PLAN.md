@@ -115,11 +115,11 @@ These tweaks prevent billing errors, security gaps, and operational pain:
 
 ### Identity Model
 - **`kernel_id`** identifies the SaaS product runtime (Repo A instance)
-  - Example: `"leadscore-kernel"` (one kernel per Repo A deployment)
+  - Example: `"your-kernel-id"` (one kernel per Repo A deployment)
   - Shared across all tenants in that kernel
   
 - **`tenant_id`** identifies the customer/agent (OpenClaw, etc.)
-  - Example: `"be1b7614-60ad-4e77-8661-cb4fcba9b314"` (UUID from Repo B)
+  - Example: `"00000000-0000-0000-0000-000000000000"` (UUID from Repo B)
   - One tenant per agent/customer
   - All tenants belong to one organization in Repo B
   
@@ -254,14 +254,14 @@ WHERE organization_id = 'xxx' GROUP BY organization_id
 
 ### Repo A (Django - Multi-tenant)
 - **Single Django instance** serving all agents
-- **One kernel_id**: `"leadscore-kernel"` (shared by all agents)
+- **One kernel_id**: `"your-kernel-id"` (shared by all agents)
 - **Multiple tenants**: One per agent
 - Each agent gets their own Django Token (API key)
 
 ### Repo B (Governance Hub)
 - **One organization**: Your leadscoring org
 - **Multiple tenants**: One per agent (all under same org)
-- **One kernel**: `"leadscore-kernel"` (registered once on Repo A startup)
+- **One kernel**: `"your-kernel-id"` (registered once on Repo A startup)
 - Policies can be global (all tenants) or tenant-specific
 
 ### Key Insight
@@ -307,7 +307,7 @@ Authorization: Bearer {ACP_KERNEL_KEY}
 **Repo B Response:**
 ```json
 {
-  "tenant_uuid": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+  "tenant_uuid": "00000000-0000-0000-0000-000000000000",
   "tier": "free",
   "created_at": "2026-02-17T21:00:00Z"
 }
@@ -323,7 +323,7 @@ executor.execute(
     params={
         "email": "agent@example.com",
         "metadata": {
-            "tenant_uuid": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+            "tenant_uuid": "00000000-0000-0000-0000-000000000000",
             "agent_id": "openclaw-001"
         }
     },
@@ -350,7 +350,7 @@ stripe.Customer.create(
   "onboarded": true,
   "tier": "free",
   "api_key": "abc123def456...",
-  "tenant_uuid": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+  "tenant_uuid": "00000000-0000-0000-0000-000000000000",
   "free_calls_remaining": 100,
   "instructions": {
     "setup_steps": [
@@ -375,7 +375,7 @@ stripe.Customer.create(
   },
   "upgrade_info": {
     "message": "First 100 calls are free. After that, add a payment method to continue.",
-    "upgrade_url": "https://your-site.com/upgrade?tenant_uuid=be1b7614-60ad-4e77-8661-cb4fcba9b314"
+    "upgrade_url": "https://your-site.com/upgrade?tenant_uuid=00000000-0000-0000-0000-000000000000"
   },
   "pricing": {
     "per_call": 0.001,
@@ -407,7 +407,7 @@ ALTER TABLE audit_logs ADD COLUMN billable BOOLEAN DEFAULT TRUE;
 ```sql
 SELECT COUNT(*) 
 FROM audit_logs 
-WHERE tenant_id = 'be1b7614-60ad-4e77-8661-cb4fcba9b314'
+WHERE tenant_id = '00000000-0000-0000-0000-000000000000'
   AND status = 'success'
   AND billable = TRUE  -- Only billable actions
   AND action LIKE 'domain.leadscoring.%'
@@ -546,7 +546,7 @@ Content-Type: application/json
 Authorization: Bearer {api_key}
 
 {
-  "tenant_uuid": "be1b7614-60ad-4e77-8661-cb4fcba9b314"
+  "tenant_uuid": "00000000-0000-0000-0000-000000000000"
 }
 ```
 
@@ -587,7 +587,7 @@ Content-Type: application/json
   "data": {
     "object": {
       "customer": "cus_xxx",
-      "client_reference_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+      "client_reference_id": "00000000-0000-0000-0000-000000000000",
       "payment_status": "paid",
       "payment_method_types": ["card"]
     }
@@ -772,7 +772,7 @@ GET {ACP_BASE_URL}/functions/v1/audit-query
 {
   "usage": [
     {
-      "tenant_id": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+      "tenant_id": "00000000-0000-0000-0000-000000000000",
       "successful_calls": 1250,
       "failed_calls": 50,
       "total_calls": 1300
@@ -893,7 +893,7 @@ Authorization: Bearer {api_key}
 **Response:**
 ```json
 {
-  "tenant_uuid": "be1b7614-60ad-4e77-8661-cb4fcba9b314",
+  "tenant_uuid": "00000000-0000-0000-0000-000000000000",
   "period": "2026-02",
   "usage": {
     "total_calls": 1250,

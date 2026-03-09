@@ -227,7 +227,7 @@ Agents configure the gateway as an MCP server:
       "command": "deno",
       "args": ["run", "--allow-net", "--allow-run", "--allow-read", "--allow-env", "gateway/server.ts"],
       "env": {
-        "ACP_BASE_URL": "https://governance-hub.supabase.co",
+        "ACP_BASE_URL": "https://your-governance-hub.supabase.co",
         "ACP_KERNEL_KEY": "kernel_key_here",
         "ACP_TENANT_ID": "tenant_uuid_here"
       }
