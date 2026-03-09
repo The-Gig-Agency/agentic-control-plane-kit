@@ -2,7 +2,7 @@
 
 ## Quick Start (Recommended)
 
-**Use the automated installer:**
+**Preferred path: use the CLI installer**
 
 ```bash
 npx echelon install
@@ -15,6 +15,7 @@ The installer will:
 - Optionally register with Governance Hub (Repo B)
 
 See [installer/README.md](./installer/README.md) for details.
+For installer ownership boundaries and readiness gates, see [installer/INSTALLER-V2-CONTRACT.md](./installer/INSTALLER-V2-CONTRACT.md).
 
 ---
 
@@ -38,8 +39,8 @@ cp -r /path/to/agentic-control-plane-kit ./control-plane
 git subtree add --prefix=control-plane \
   https://github.com/The-Gig-Agency/agentic-control-plane-kit.git main --squash
 
-# Option C: npm package (when published)
-npm install @your-org/agentic-control-plane-kit
+# Option C: npm package install (advanced)
+npm install agentic-control-plane-kit
 ```
 
 ### 2. Create Bindings File

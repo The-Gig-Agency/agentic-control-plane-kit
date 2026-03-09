@@ -40,6 +40,20 @@ This ensures:
 
 ---
 
+## Installer Contract (V2)
+
+For implementation boundaries and readiness gates, see:
+
+- [INSTALLER-V2-CONTRACT.md](./INSTALLER-V2-CONTRACT.md)
+
+This defines:
+
+- what is prebuilt by the kit vs project-owned
+- required readiness checks for development and production
+- rollout checklist for improving installer quality
+
+---
+
 ## Usage
 
 ### As Published Package
