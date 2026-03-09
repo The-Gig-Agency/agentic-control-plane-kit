@@ -2,7 +2,7 @@
 
 **Purpose:** Build a registered Echelon kernel that acts as a transparent MCP proxy, enforcing governance policies before forwarding tool calls, resource access, prompts, and sampling requests to downstream MCP servers.
 
-**Status:** Planning Phase  
+**Status:** Implemented (historical plan; validation and hardening ongoing)  
 **Last Updated:** February 2026
 
 ---
