@@ -7,6 +7,7 @@
 import type { GatewayConfig } from './config.ts';
 import { ProcessManager } from './process-manager.ts';
 import type { MCPTool } from './types.ts';
+import { normalizeAcpBaseUrl } from './runtime-env.ts';
 
 export interface DiscoveryInfo {
   gateway_id: string;
@@ -117,12 +118,9 @@ export async function getDiscoveryInfo(
   }
 
   // Get platform URL from environment or use default
-  let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+  let platformUrl = normalizeAcpBaseUrl(Deno.env.get('ACP_BASE_URL'));
   const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
   const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
-
-  // Normalize platform URL - remove trailing /functions/v1 if present
-  platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
   
   // Build full registry endpoint URLs (hyphen format, not slash)
   const registryBase = `${platformUrl}/functions/v1`;

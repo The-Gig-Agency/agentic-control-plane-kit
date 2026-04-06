@@ -25,6 +25,10 @@
    PORT=8000
    ```
 
+   Notes:
+   - `ALLOWED_ORIGINS` is required for browser-facing production deployments; when unset, the gateway denies cross-origin browser access instead of allowing all origins.
+   - `CORS_ALLOW_CREDENTIALS=true` is optional and should only be enabled when a browser client truly needs credentialed cross-origin requests.
+
 6. **Deploy** - Railway will automatically build and deploy
 
 ## Advantages Over Fly.io
