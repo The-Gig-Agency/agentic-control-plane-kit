@@ -9,7 +9,20 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { MCPRequest, MCPResponse } from './types.ts';
 import { extractTenantFromApiKey, extractActor } from './auth.ts';
 import { Actor } from './types.ts';
-import { ValidationError } from './errors.ts';
+import {
+  AuthorizationError,
+  ValidationError,
+} from './errors.ts';
+import {
+  buildConnectorSummariesFromDiscovery,
+  buildEmptyAuditResponse,
+  buildPublicDiscoverResponse,
+  buildPublicEvaluateResponse,
+  buildPublicExecuteBlockedResponse,
+  buildPublicExecuteSuccessResponse,
+  buildPublicRegisterResponse,
+  deriveToolName,
+} from './public-facade.ts';
 import {
   getCorsHeaders,
   getGatewayRuntimeEnv,
@@ -46,6 +59,36 @@ async function ensureInitialized(): Promise<void> {
   proxy = initializedProxy;
   
   initialized = true;
+}
+
+async function parseJsonBody(req: Request): Promise<any> {
+  const rawRequest = await req.json();
+
+  if (!rawRequest || typeof rawRequest !== 'object') {
+    throw new ValidationError('Request must be a JSON object');
+  }
+
+  const requestSize = new TextEncoder().encode(JSON.stringify(rawRequest)).length;
+  if (requestSize > 1024 * 1024) {
+    throw new ValidationError('Request body too large (max 1MB)');
+  }
+
+  return rawRequest;
+}
+
+function getFacadeActor(apiKey: string, actor?: Partial<Actor>): Actor {
+  if (actor?.type && actor?.id) {
+    return {
+      type: actor.type,
+      id: actor.id,
+      api_key_id: actor.api_key_id,
+    };
+  }
+
+  return {
+    type: 'api_key',
+    id: `api_key:${apiKey.slice(0, 8)}`,
+  };
 }
 
 /**
@@ -176,8 +219,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
       });
     }
 
-    // Discovery endpoint (public, no API key required)
-    if (path === '/meta.discover' && req.method === 'GET') {
+    // Discovery facade (public, no API key required)
+    if ((path === '/discover' || path === '/meta.discover') && req.method === 'GET') {
       try {
         // Try to load config, but handle gracefully if it doesn't exist
         let config;
@@ -190,51 +233,28 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         } catch (error) {
           // Config might not exist in serverless - return basic discovery info
           console.warn('[HTTP] Config not found, returning basic discovery info:', error);
-          const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
-          let platformUrl = runtimeEnv.acpBaseUrl;
           const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
-          
-          // Build full registry endpoint URLs (hyphen format, not slash)
-          const registryBase = `${platformUrl}/functions/v1`;
-          const registryEndpoints = {
-            list_servers: `${registryBase}/mcp-servers-list`, // GET
-            register_server: `${registryBase}/mcp-servers-register`, // POST
-            update_server: `${registryBase}/mcp-servers-update`, // PUT
-            delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
-            list_connectors: `${registryBase}/connectors-list`, // GET
-          };
-          const agentQuickstart = [
-            '1) Call meta.discover to get signup + registry endpoints.',
-            '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
-            '3) Until email is verified, keys are read-only (write scopes blocked).',
-            '4) Verify email via verify_email_endpoint using {token}.',
-            '5) After verification, write scopes unlock (register/update servers, propose policies).',
-          ];
-          
+          const publicResponse = buildPublicDiscoverResponse({
+            gatewayName: 'Echelon MCP Gateway',
+            version: 'unknown',
+            docsUrl,
+            connectors: [],
+          });
+
+          if (path === '/discover') {
+            return new Response(JSON.stringify(publicResponse), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
           return new Response(JSON.stringify({
             jsonrpc: '2.0',
             id: null,
             result: {
               gateway: {
-                name: 'Echelon MCP Gateway',
-                url: 'https://gateway.buyechelon.com',
-                registration_required: true,
-                registration_url: `${signupApiBase}/consumer`,
-                verification_required_for_write: true,
-                verify_email_endpoint: `${registryBase}/verify-email`,
-                unverified_scopes: ['mcp.read', 'mcp.meta.discover'],
-                verified_scopes: ['mcp:read', 'mcp:write', 'mcp:register', 'mcp:delete', 'authorize', 'connectors:read', 'connectors:resolve'],
-                agent_quickstart: agentQuickstart,
-                // API endpoints for programmatic signup
-                signup_api_base: signupApiBase,
-                signup_endpoint: '/api/consumer/signup',
-                // Registry endpoints - full URLs (no path guessing needed)
-                registry_endpoints: registryEndpoints,
-                // Governance endpoints - full URLs for policy management
-                governance_endpoints: {
-                  propose_policy: `${registryBase}/policy-propose`,
-                },
-                docs_url: docsUrl,
+                name: publicResponse.gateway.name,
+                gateway_version: publicResponse.gateway.version,
+                docs_url: publicResponse.gateway.docs_url,
               },
               servers: [],
               capabilities: {
@@ -257,6 +277,18 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           processManager,
           `${signupApiBase}/consumer`
         );
+        const publicResponse = buildPublicDiscoverResponse({
+          gatewayName: discoveryInfo.name || 'Echelon MCP Gateway',
+          version: discoveryInfo.gateway_version || 'unknown',
+          docsUrl: discoveryInfo.docs_url,
+          connectors: buildConnectorSummariesFromDiscovery(discoveryInfo),
+        });
+
+        if (path === '/discover') {
+          return new Response(JSON.stringify(publicResponse), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
@@ -291,48 +323,28 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         });
       } catch (error) {
         console.error('[HTTP] Discovery error:', error);
-        // Return basic discovery info even on error
-        const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
-        const platformUrl = runtimeEnv.acpBaseUrl;
         const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
-        
-        // Build full registry endpoint URLs (hyphen format, not slash)
-        const registryBase = `${platformUrl}/functions/v1`;
-        const registryEndpoints = {
-          list_servers: `${registryBase}/mcp-servers-list`, // GET
-          register_server: `${registryBase}/mcp-servers-register`, // POST
-          update_server: `${registryBase}/mcp-servers-update`, // PUT
-          delete_server: `${registryBase}/mcp-servers-delete`, // DELETE
-          list_connectors: `${registryBase}/connectors-list`, // GET
-        };
-        const agentQuickstart = [
-          '1) Call meta.discover to get signup + registry endpoints.',
-          '2) POST to signup_endpoint with {name,email} to receive api_key + verification_token.',
-          '3) Until email is verified, keys are read-only (write scopes blocked).',
-          '4) Verify email via verify_email_endpoint using {token}.',
-          '5) After verification, write scopes unlock (register/update servers, propose policies).',
-        ];
-        
+        const publicResponse = buildPublicDiscoverResponse({
+          gatewayName: 'Echelon MCP Gateway',
+          version: 'unknown',
+          docsUrl,
+          connectors: [],
+        });
+
+        if (path === '/discover') {
+          return new Response(JSON.stringify(publicResponse), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         return new Response(JSON.stringify({
           jsonrpc: '2.0',
           id: null,
           result: {
             gateway: {
-              name: 'Echelon MCP Gateway',
-              url: 'https://gateway.buyechelon.com',
-              registration_required: true,
-              registration_url: `${signupApiBase}/consumer`,
-              verification_required_for_write: true,
-              verify_email_endpoint: `${registryBase}/verify-email`,
-              unverified_scopes: ['mcp.read', 'mcp.meta.discover'],
-              verified_scopes: ['mcp:read', 'mcp:write', 'mcp:register', 'mcp:delete', 'authorize', 'connectors:read', 'connectors:resolve'],
-              agent_quickstart: agentQuickstart,
-              // API endpoints for programmatic signup
-              signup_api_base: signupApiBase,
-              signup_endpoint: '/api/consumer/signup',
-              // Registry endpoints - full URLs (no path guessing needed)
-              registry_endpoints: registryEndpoints,
-              docs_url: docsUrl,
+              name: publicResponse.gateway.name,
+              gateway_version: publicResponse.gateway.version,
+              docs_url: publicResponse.gateway.docs_url,
             },
             servers: [],
             capabilities: {
@@ -343,6 +355,74 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
             },
           },
         }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    if (path === '/register' && req.method === 'POST') {
+      try {
+        const rawRequest = await parseJsonBody(req);
+        const registrationRequest = rawRequest as {
+          project?: string;
+          env?: 'development' | 'staging' | 'production';
+          connector?: string;
+          actor_id?: string;
+        };
+
+        if (!registrationRequest.project || !registrationRequest.env) {
+          throw new ValidationError('project and env are required');
+        }
+
+        const platformUrl = runtimeEnv.acpBaseUrl;
+        const fallbackResponse = buildPublicRegisterResponse(
+          registrationRequest as {
+            project: string;
+            env: 'development' | 'staging' | 'production';
+            connector?: string;
+            actor_id?: string;
+          },
+          `${platformUrl}/onboard/mcp-gateway`
+        );
+
+        try {
+          const { loadConfig } = await import('./config.ts');
+          const { handleRegistration } = await import('./discovery.ts');
+          const config = loadConfig();
+          const legacyResponse = await handleRegistration(
+            {
+              agent_id: registrationRequest.project,
+              agent_name: registrationRequest.project,
+              requested_servers: registrationRequest.connector ? [registrationRequest.connector] : undefined,
+            },
+            config,
+            platformUrl
+          );
+
+          return new Response(JSON.stringify(buildPublicRegisterResponse(
+            registrationRequest as {
+              project: string;
+              env: 'development' | 'staging' | 'production';
+              connector?: string;
+              actor_id?: string;
+            },
+            legacyResponse.registration_url
+          )), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch {
+          return new Response(JSON.stringify(fallbackResponse), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (error) {
+        const message = error instanceof ValidationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Invalid JSON';
+        return new Response(JSON.stringify({ error: message }), {
+          status: error instanceof ValidationError ? 400 : 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -380,6 +460,99 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         }),
       }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (path === '/evaluate' && req.method === 'POST') {
+      try {
+        const rawRequest = await parseJsonBody(req);
+        if (!rawRequest.project || !rawRequest.env || !rawRequest.connector || !rawRequest.action) {
+          throw new ValidationError('project, env, connector, and action are required');
+        }
+
+        await ensureInitialized();
+        if (!proxy) {
+          throw new Error('Proxy not initialized');
+        }
+
+        const actor = getFacadeActor(apiKey, rawRequest.actor);
+        const toolName = deriveToolName(rawRequest.connector, rawRequest.action);
+        const decision = await proxy.evaluateToolCall(toolName, rawRequest.input, tenantId, actor);
+
+        return new Response(JSON.stringify(buildPublicEvaluateResponse(decision)), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        const message = error instanceof ValidationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Unable to evaluate request';
+        return new Response(JSON.stringify({ error: message }), {
+          status: error instanceof ValidationError ? 400 : 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    if (path === '/execute' && req.method === 'POST') {
+      try {
+        const rawRequest = await parseJsonBody(req);
+        if (!rawRequest.project || !rawRequest.env || !rawRequest.connector || !rawRequest.action) {
+          throw new ValidationError('project, env, connector, and action are required');
+        }
+
+        await ensureInitialized();
+        if (!proxy) {
+          throw new Error('Proxy not initialized');
+        }
+
+        const actor = getFacadeActor(apiKey, rawRequest.actor);
+        const toolName = deriveToolName(rawRequest.connector, rawRequest.action);
+
+        try {
+          const result = await proxy.handleToolCall(
+            { name: toolName, arguments: rawRequest.input || {} },
+            tenantId,
+            actor
+          );
+
+          return new Response(JSON.stringify(buildPublicExecuteSuccessResponse({
+            executionId: `exec_${Date.now()}`,
+            result: result && typeof result === 'object' ? result as Record<string, unknown> : { value: result },
+            decisionId: rawRequest.decision_id,
+          })), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (error) {
+          if (error instanceof AuthorizationError) {
+            return new Response(JSON.stringify(buildPublicExecuteBlockedResponse({
+              executionId: `exec_${Date.now()}`,
+              approvalRequired: error.message.toLowerCase().includes('approval'),
+              auditId: error.decisionId || rawRequest.decision_id,
+            })), {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          throw error;
+        }
+      } catch (error) {
+        const message = error instanceof ValidationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Unable to execute request';
+        return new Response(JSON.stringify({ error: message }), {
+          status: error instanceof ValidationError ? 400 : 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    if (path === '/audit' && req.method === 'GET') {
+      return new Response(JSON.stringify(buildEmptyAuditResponse()), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

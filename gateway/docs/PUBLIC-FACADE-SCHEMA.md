@@ -2,6 +2,12 @@
 
 Status: maintainer planning reference
 
+Current implementation status:
+
+- `GET /discover`, `POST /register`, `POST /evaluate`, `POST /execute`, and `GET /audit` now exist as additive HTTP facade routes in `gateway/http-server.ts`
+- legacy MCP discovery (`GET /meta.discover`) and MCP transport (`POST /mcp`) remain supported for existing adopters during migration
+- `/audit` is currently a placeholder facade response until a stable product-shaped audit query backend is finalized
+
 Purpose:
 
 - define the first product-facing gateway contract for Echelon

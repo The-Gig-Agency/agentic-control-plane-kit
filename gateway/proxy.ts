@@ -316,85 +316,8 @@ export class MCPProxy {
       return await this.handleConnectorsList(tenantId);
     }
 
-    // Find server for this tool (try dynamic first, fall back to static)
-    let serverConfig: ServerConfig | null = null;
-    let serverId: string | null = null;
-
-    if (tenantId) {
-      // Try dynamic server registry
-      try {
-        const servers = await this.serverRegistry.getServers(tenantId);
-        for (const [id, config] of servers) {
-          if (toolName.startsWith(config.tool_prefix)) {
-            serverConfig = config;
-            serverId = id;
-            break;
-          }
-        }
-      } catch (error) {
-        console.warn(`[PROXY] Failed to load servers from registry, falling back to static config:`, error);
-      }
-    }
-
-    // Fall back to static config if not found
-    if (!serverConfig) {
-      serverConfig = getServerForTool(toolName, this.config);
-      if (serverConfig) {
-        // Find server ID from static config
-        for (const [id, config] of Object.entries(this.config.servers)) {
-          if (config === serverConfig) {
-            serverId = id;
-            break;
-          }
-        }
-      }
-    }
-
-    if (!serverConfig || !serverId) {
-      throw new Error(`No server found for tool: ${toolName}`);
-    }
-
-    // Authorize tool call
-    const action = `tool:${toolName}`;
-    let decision: AuthorizationResponse;
-    
-    try {
-      decision = await authorizeAction(
-        action,
-        params.arguments || {},
-        tenantId,
-        actor,
-        this.kernelId,
-        this.controlPlane,
-        this.cache
-      );
-    } catch (error) {
-      // If AuthorizationError, emit audit and rethrow
-      if (error instanceof AuthorizationError) {
-        // Create a deny decision for audit
-        const denyDecision: AuthorizationResponse = {
-          decision_id: error.decisionId || `deny_${Date.now()}`,
-          decision: 'deny',
-          reason: error.message,
-          policy_id: error.policyId,
-          policy_version: '1.0.0',
-        };
-        
-        // Emit audit for denied request
-        await emitAuthorizationAudit(
-          tenantId,
-          action,
-          denyDecision,
-          actor,
-          this.platformUrl,
-          this.kernelApiKey,
-          params.arguments || {}
-        ).catch(() => {}); // Don't fail on audit errors
-        
-        throw error; // Re-throw AuthorizationError
-      }
-      throw error; // Re-throw other errors
-    }
+    const { serverConfig, serverId } = await this.resolveToolTarget(toolName, tenantId);
+    const { action, decision } = await this.authorizeToolCall(toolName, params.arguments || {}, tenantId, actor);
 
     // Emit audit for allowed request
     await emitAuthorizationAudit(
@@ -417,6 +340,42 @@ export class MCPProxy {
       name: strippedName,
       arguments: params.arguments,
     });
+  }
+
+  /**
+   * Evaluate a tool call through policy without executing it.
+   * Used by the public HTTP facade so the product surface does not need to
+   * duplicate kernel/cache authorization logic.
+   */
+  async evaluateToolCall(
+    toolName: string,
+    args: Record<string, unknown> | undefined,
+    tenantId: string,
+    actor: Actor,
+  ): Promise<AuthorizationResponse> {
+    if (!toolName) {
+      throw new ValidationError('Tool name required', 'name');
+    }
+
+    if (toolName !== 'echelon.connectors.list') {
+      await this.resolveToolTarget(toolName, tenantId);
+    }
+
+    try {
+      const { decision } = await this.authorizeToolCall(toolName, args || {}, tenantId, actor);
+      return decision;
+    } catch (error) {
+      if (error instanceof AuthorizationError) {
+        return {
+          decision_id: error.decisionId || `deny_${Date.now()}`,
+          decision: error.message.toLowerCase().includes('approval') ? 'require_approval' : 'deny',
+          reason: error.message,
+          policy_id: error.policyId,
+          policy_version: '1.0.0',
+        };
+      }
+      throw error;
+    }
   }
 
   /**
@@ -1033,6 +992,92 @@ export class MCPProxy {
     } catch (error) {
       console.error('[PROXY] Failed to fetch connectors:', error);
       throw new Error(`Failed to list connectors: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async resolveToolTarget(
+    toolName: string,
+    tenantId: string,
+  ): Promise<{ serverConfig: ServerConfig; serverId: string }> {
+    let serverConfig: ServerConfig | null = null;
+    let serverId: string | null = null;
+
+    if (tenantId) {
+      try {
+        const servers = await this.serverRegistry.getServers(tenantId);
+        for (const [id, config] of servers) {
+          if (toolName.startsWith(config.tool_prefix)) {
+            serverConfig = config;
+            serverId = id;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(`[PROXY] Failed to load servers from registry, falling back to static config:`, error);
+      }
+    }
+
+    if (!serverConfig) {
+      serverConfig = getServerForTool(toolName, this.config);
+      if (serverConfig) {
+        for (const [id, config] of Object.entries(this.config.servers)) {
+          if (config === serverConfig) {
+            serverId = id;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!serverConfig || !serverId) {
+      throw new Error(`No server found for tool: ${toolName}`);
+    }
+
+    return { serverConfig, serverId };
+  }
+
+  private async authorizeToolCall(
+    toolName: string,
+    args: Record<string, unknown>,
+    tenantId: string,
+    actor: Actor,
+  ): Promise<{ action: string; decision: AuthorizationResponse }> {
+    const action = `tool:${toolName}`;
+
+    try {
+      const decision = await authorizeAction(
+        action,
+        args,
+        tenantId,
+        actor,
+        this.kernelId,
+        this.controlPlane,
+        this.cache
+      );
+      return { action, decision };
+    } catch (error) {
+      if (error instanceof AuthorizationError) {
+        const denyDecision: AuthorizationResponse = {
+          decision_id: error.decisionId || `deny_${Date.now()}`,
+          decision: 'deny',
+          reason: error.message,
+          policy_id: error.policyId,
+          policy_version: '1.0.0',
+        };
+
+        await emitAuthorizationAudit(
+          tenantId,
+          action,
+          denyDecision,
+          actor,
+          this.platformUrl,
+          this.kernelApiKey,
+          args
+        ).catch(() => {});
+
+        throw error;
+      }
+      throw error;
     }
   }
 }
