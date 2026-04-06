@@ -29,6 +29,7 @@ function createMockRequest(apiKey: string = 'ock_test123456'): any {
 }
 
 const bindings: Bindings = {
+  integration: 'test',
   tenant: {
     table: 'tenants',
     id_column: 'id',

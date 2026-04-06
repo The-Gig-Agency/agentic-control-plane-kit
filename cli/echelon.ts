@@ -3,6 +3,13 @@
  * Echelon CLI - Published entrypoint
  *
  * Usage:
+ *   npx echelon init
+ *   npx echelon login
+ *   npx echelon link
+ *   npx echelon protect <connector>
+ *   npx echelon audit
+ *
+ * Legacy compatibility:
  *   npx echelon install
  *   npx echelon doctor --json
  *   npx echelon uninstall

@@ -23,23 +23,34 @@ If you're reviewing ACP from LinkedIn/GitHub, use this order:
 
 ## Quickstart
 
-### Option A: Automated Installation (Recommended)
+### Option A: Public product-shell workflow (Recommended)
 
 ```bash
-# Preferred install path: CLI (auto-detects framework)
-npx echelon install
+# Detect project and scaffold readiness workflow
+npx echelon init
 
-# Or specify framework
+# Public workflow verbs
+npx echelon login
+npx echelon link
+npx echelon protect shopify
+npx echelon audit
+```
+
+The public CLI will:
+- auto-detect your framework
+- scaffold/init ACP kernel artifacts through a product-facing workflow
+- expose guided next steps for link, protect, and audit
+- avoid surfacing raw governance or executor wiring in the normal path
+
+Legacy note:
+
+```bash
 npx echelon install --framework django
 npx echelon install --framework express
 npx echelon install --framework supabase
 ```
 
-The installer will:
-- Auto-detect your framework
-- Copy kernel into your project
-- Generate adapters, endpoint, bindings, and migrations
-- Optionally register with Governance Hub (Repo B)
+`install` remains supported as the compatibility path for current ACP adopters and existing docs.
 
 See [installer/README.md](./installer/README.md) for details.
 
@@ -56,7 +67,57 @@ npm install agentic-control-plane-kit
 Use this only when you want to import kernel code directly in an existing app.
 For most teams, `npx echelon install` is the faster and safer path.
 
-### 1. Define Your Bindings
+## Public SDK Surface (Product-facing)
+
+For product code (and agents), prefer the stable SDK facade from `agentic-control-plane-kit`:
+
+- `defineConfig()` (your `echelon.config.ts` public shape)
+- `protect()` (build a kernel-backed `/manage` router from that config)
+- `middleware()` (thin wrapper for Fetch-style runtimes)
+- `createClient()` (call `/manage` actions from a client)
+
+Example (server-side):
+
+```ts
+import config from './echelon.config';
+import { protect } from 'agentic-control-plane-kit';
+
+/**
+ * Provide your own adapter implementations for your persistence/audit stack.
+ * (DbAdapter, AuditAdapter, IdempotencyAdapter, RateLimitAdapter, CeilingsAdapter)
+ */
+const deps = {
+  dbAdapter: /* your DbAdapter */,
+  auditAdapter: /* your AuditAdapter */,
+  idempotencyAdapter: /* your IdempotencyAdapter */,
+  rateLimitAdapter: /* your RateLimitAdapter */,
+  ceilingsAdapter: /* your CeilingsAdapter */,
+};
+
+export const manageRouter = protect(config, deps);
+```
+
+Example (client-side):
+
+```ts
+import { createClient } from 'agentic-control-plane-kit';
+
+const client = createClient({
+  endpointUrl: 'https://your-app.com/api/manage',
+  apiKey: 'ock_...',
+});
+
+const res = await client.call('meta.actions');
+```
+
+Public config + migration docs: `docs/Echelon-CONFIG-SCHEMA.md`.
+Compatibility bridge helpers: `toBindings()` and `fromBindings()` on the public SDK surface.
+
+> Legacy note: the sections below document the kernel-first embedding flow.
+> For product/agent code, prefer the stable “Public SDK Surface” above (`defineConfig`/`protect`/`createClient`).
+> Existing adopters do **not** need to rewrite immediately: `controlplane.bindings.json` remains supported, and `toBindings()` / `fromBindings()` are the intended migration bridge.
+
+### 1. (Legacy) Define Your Bindings
 
 Create a `bindings.json` file:
 

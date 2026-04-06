@@ -17,6 +17,13 @@ import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
 import { status } from './status.js';
+import {
+  createEnvironmentWorkflowPlan,
+  createInitWorkflowPlan,
+  createLinkWorkflowPlan,
+  createLoginWorkflowPlan,
+  createProtectWorkflowPlan,
+} from './workflows/index.js';
 import { writeInstallManifest, getKernelVersion, resolvePacksFromBindings } from './manifest.js';
 import readline from 'node:readline';
 import * as fs from 'node:fs';
@@ -444,22 +451,150 @@ export function runCli(argv = process.argv): void {
     .description('Agentic Control Plane Installer')
     .version('0.1.0');
 
+  function printWorkflow(plan: any, json?: boolean): void {
+    if (json) {
+      console.log(JSON.stringify(plan, null, 2));
+      return;
+    }
+
+    console.log(`${plan.publicCommand}`);
+    console.log('');
+    console.log(`Summary: ${plan.summary}`);
+    console.log(`Status: ${plan.status}`);
+    console.log(`Next: ${plan.nextAction}`);
+    console.log('');
+    console.log('Steps:');
+    for (const step of plan.steps ?? []) {
+      console.log(`- ${step.id}: ${step.label}`);
+    }
+    console.log('');
+  }
+
+  program
+    .command('login')
+    .description('Public operator login (product-shell workflow)')
+    .option('--env <env>', 'Environment (development|staging|production)', 'development')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts) => {
+      const plan = await createLoginWorkflowPlan({
+        cwd: process.cwd(),
+        env: opts.env as Environment,
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('link')
+    .description('Public link workflow (associate local app with a hosted project)')
+    .option('--env <env>', 'Environment (development|staging|production)', 'development')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts) => {
+      const plan = await createLinkWorkflowPlan({
+        cwd: process.cwd(),
+        env: opts.env as Environment,
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('init')
+    .description('Public init workflow (scaffold with readiness gates)')
+    .option('--env <env>', 'Environment (development|staging|production)', 'development')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts) => {
+      const plan = await createInitWorkflowPlan({
+        cwd: process.cwd(),
+        env: opts.env as Environment,
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('protect <connector>')
+    .description('Public protect workflow (verify readiness + prepare safe execution)')
+    .option('--env <env>', 'Environment (development|staging|production)', 'production')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (connector: string, opts) => {
+      const plan = await createProtectWorkflowPlan({
+        cwd: process.cwd(),
+        env: opts.env as Environment,
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+
+      // Keep connector as an operator-facing hint; workflow plan stays generic by design.
+      const planWithConnector = { ...plan, connector };
+      printWorkflow(planWithConnector, opts.json);
+    });
+
+  program
+    .command('dev')
+    .description('Convenience: target development environment')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts) => {
+      const plan = await createEnvironmentWorkflowPlan({
+        cwd: process.cwd(),
+        env: 'development',
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('deploy')
+    .description('Convenience: target production protect workflow')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts) => {
+      const plan = await createProtectWorkflowPlan({
+        cwd: process.cwd(),
+        env: 'production',
+        framework: opts.framework === 'auto' ? undefined : (opts.framework as any),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('audit')
+    .description('Run readiness/audit checks (diagnostics for the public surface)')
+    .option('--json', 'Output machine-readable JSON')
+    .option('--probe', 'Probe Governance Hub connectivity')
+    .action(async (opts) => {
+      await doctor({ json: opts.json, probe: opts.probe });
+    });
+
+  program
+    .command('approve')
+    .description('Finalize approvals (operator step; handled by Governance Hub in production)')
+    .action(async () => {
+      console.log('approve workflow is currently a product-shell placeholder.');
+      console.log('Next step: use Governance Hub approval UI/API to finalize protected changes.');
+      console.log('');
+    });
+
   program
     .command('install')
-    .description('Install control plane (safe, reversible in dev mode)')
+    .description('DEPRECATED: legacy installer (use init/dev/deploy workflows instead)')
     .option('-f, --framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
     .option('-e, --env <env>', 'Environment (development|staging|production)', 'development')
-    .option('--kernel-id <id>', 'Kernel ID (auto-generated in dev)')
-    .option('--integration <name>', 'Integration name')
-    .option('--governance-hub-url <url>', 'Governance Hub URL (Repo B)')
-    .option('--kernel-api-key <key>', 'Kernel API key for Repo B')
-    .option('--cia-url <url>', 'Key Vault Executor URL (Repo C)')
-    .option('--cia-service-key <key>', 'Service key for Repo C')
-    .option('--cia-anon-key <key>', 'Supabase anon key for Repo C')
-    .option('--skip-registration', 'Skip kernel registration')
-    .option('--base-path <path>', 'Base path for endpoint (default: /api/manage)')
-    .option('--no-migrations', 'Code-only install (skip migration generation)')
-    .option('--migrations-only', 'Generate migrations only (skip code installation)')
+    .option('--kernel-id <id>', '[operator-only] Kernel ID (auto-generated in dev)')
+    .option('--integration <name>', '[operator-only] Integration name')
+    .option('--governance-hub-url <url>', '[operator-only] Governance Hub URL (Repo B)')
+    .option('--kernel-api-key <key>', '[operator-only] Kernel API key for Repo B')
+    .option('--cia-url <url>', '[operator-only] Key Vault Executor URL (Repo C)')
+    .option('--cia-service-key <key>', '[operator-only] Service key for Repo C')
+    .option('--cia-anon-key <key>', '[operator-only] Supabase anon key for Repo C')
+    .option('--skip-registration', '[operator-only] Skip kernel registration')
+    .option('--base-path <path>', '[operator-only] Base path for endpoint (default: /api/manage)')
+    .option('--no-migrations', '[operator-only] Code-only install (skip migration generation)')
+    .option('--migrations-only', '[operator-only] Generate migrations only (skip code installation)')
     .option('--dry-run', 'Show what would be generated (no writes)')
     .action(async (opts) => {
       const options: InstallOptions = {
@@ -488,7 +623,7 @@ export function runCli(argv = process.argv): void {
 
   program
     .command('uninstall')
-    .description('Remove control plane installation')
+    .description('DEPRECATED legacy: remove control plane installation')
     .action(async () => {
       try {
         await uninstall();
@@ -500,7 +635,7 @@ export function runCli(argv = process.argv): void {
 
   program
     .command('doctor')
-    .description('Check installation health')
+    .description('DEPRECATED legacy: run installation doctor (use `echelon audit` instead)')
     .option('--json', 'Output machine-readable JSON')
     .option('--probe', 'Probe Governance Hub connectivity')
     .action(async (opts) => {

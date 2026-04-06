@@ -19,6 +19,9 @@ export * from './src/meta-pack';
 export * from './src/executor-adapter';
 export * from './src/control-plane-adapter';
 
+// Product-facing SDK facade
+export * from './src/sdk';
+
 // Re-export main router creator
 export { createManageRouter } from './src/router';
 export type { ManageRouter, RequestMeta } from './src/router';
