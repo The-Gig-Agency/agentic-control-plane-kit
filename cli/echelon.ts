@@ -23,9 +23,25 @@ import { runCli, install } from '../installer/cli.js';
 import { uninstall } from '../installer/uninstall.js';
 import { doctor } from '../installer/doctor.js';
 import { status } from '../installer/status.js';
+import {
+  ECHELON_PUBLIC_VERBS,
+  ECHELON_LEGACY_VERBS,
+  ECHELON_META_VERBS,
+  listAllVerbMeta,
+  registerEchelonCommands,
+} from '../installer/cli-registry.js';
+import type { EchelonVerbMeta, EchelonCommandHandlers } from '../installer/cli-registry.js';
 
 // Re-export for direct import
 export { install, uninstall, doctor, status };
+export {
+  ECHELON_PUBLIC_VERBS,
+  ECHELON_LEGACY_VERBS,
+  ECHELON_META_VERBS,
+  listAllVerbMeta,
+  registerEchelonCommands,
+};
+export type { EchelonVerbMeta, EchelonCommandHandlers };
 
 // Run when invoked directly (cross-platform)
 const __filename = fileURLToPath(import.meta.url);

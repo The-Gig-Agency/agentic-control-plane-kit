@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/The-Gig-Agency/agentic-control-plane-kit/echelon.config.schema.json",
+  "title": "Echelon public bindings (echelon.config.ts subset)",
+  "description": "JSON Schema for the `bindings` object inside EchelonConfig. The `packs` array is code (Pack objects) and is not representable here; use examples/echelon.config.minimal.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant", "auth", "database"],
+  "properties": {
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "id_column", "get_tenant_fn", "is_admin_fn"],
+      "properties": {
+        "table": { "type": "string", "minLength": 1 },
+        "id_column": { "type": "string", "minLength": 1 },
+        "get_tenant_fn": { "type": "string", "minLength": 1 },
+        "is_admin_fn": { "type": "string", "minLength": 1 }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keys_table",
+        "key_prefix",
+        "prefix_length",
+        "key_hash_column",
+        "key_prefix_column",
+        "scopes_column"
+      ],
+      "properties": {
+        "keys_table": { "type": "string", "minLength": 1 },
+        "key_prefix": { "type": "string", "minLength": 1 },
+        "prefix_length": { "type": "integer", "minimum": 1 },
+        "key_hash_column": { "type": "string", "minLength": 1 },
+        "key_prefix_column": { "type": "string", "minLength": 1 },
+        "scopes_column": { "type": "string", "minLength": 1 }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["adapter"],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "enum": ["supabase", "prisma", "drizzle", "custom", "django"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "integration": {
+      "type": "string",
+      "description": "Optional stable integration id for kernel context / audit"
+    }
+  }
+}

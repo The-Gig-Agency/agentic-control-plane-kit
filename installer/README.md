@@ -59,10 +59,13 @@ This defines:
 ### As Published Package
 
 ```bash
+npx echelon verbs --public-only
 npx echelon install
 npx echelon install --framework django
 npx echelon install --framework express --kernel-id my-kernel
 ```
+
+Use `echelon verbs` (or `echelon verbs --json`) to list registered public vs legacy subcommands; see `installer/cli-registry.ts` for the canonical verb table (TGA-171).
 
 ### As Development Tool
 

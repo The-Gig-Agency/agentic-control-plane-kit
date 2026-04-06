@@ -66,6 +66,12 @@ export type EchelonConfig = {
 };
 ```
 
+### 2.1 Repo artifacts (TGA-172)
+
+- Example TypeScript file: [examples/echelon.config.minimal.ts](../examples/echelon.config.minimal.ts)
+- JSON Schema for the `bindings` object: [config/echelon.config.schema.json](../config/echelon.config.schema.json)
+- Stable package imports: [SDK-EXPORT-MAP.md](./SDK-EXPORT-MAP.md)
+
 ---
 
 ## 3. Example: Minimal `echelon.config.ts`
