@@ -1,6 +1,6 @@
-# Agentic Control Plane Kit
+# Echelon — Agentic Control Plane Kit
 
-A reusable starter kit for adding a `/manage` control-plane API to any multi-tenant SaaS platform.
+A reusable starter kit for adding a `/manage` control-plane API to any multi-tenant SaaS platform. **Echelon** is the product-shaped CLI and config story on top of this kit; the npm package name remains `agentic-control-plane-kit` for compatibility.
 
 ## Overview
 
@@ -13,13 +13,13 @@ This kit provides:
 - **Bindings** — Repo-specific configuration layer
 - **Conformance Tests** — HTTP-based tests; run against any `/manage` endpoint
 
-## Evaluator Start Here
+## Evaluator start here
 
 If you're reviewing ACP from LinkedIn/GitHub, use this order:
 
-1. **Quick install (preferred):** [Quickstart](#quickstart)
-2. **Architecture model:** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)
-3. **Implementation details:** [INSTALL.md](./INSTALL.md)
+1. **Public path (preferred):** [Quickstart](#quickstart) — CLI + SDK + `echelon.config.ts` without multi-repo setup.
+2. **Manual / advanced embedding:** [INSTALL.md](./INSTALL.md)
+3. **Full multi-repo architecture (maintainers):** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md) — internal choreography; not required for app integration.
 
 ## Quickstart
 
@@ -27,13 +27,13 @@ If you're reviewing ACP from LinkedIn/GitHub, use this order:
 
 ```bash
 # Detect project and scaffold readiness workflow
-npx echelon init
+npx --package agentic-control-plane-kit echelon init
 
 # Public workflow verbs
-npx echelon login
-npx echelon link
-npx echelon protect shopify
-npx echelon audit
+npx --package agentic-control-plane-kit echelon login
+npx --package agentic-control-plane-kit echelon link
+npx --package agentic-control-plane-kit echelon protect shopify
+npx --package agentic-control-plane-kit echelon audit
 ```
 
 The public CLI will:
@@ -45,9 +45,9 @@ The public CLI will:
 Legacy note:
 
 ```bash
-npx echelon install --framework django
-npx echelon install --framework express
-npx echelon install --framework supabase
+npx --package agentic-control-plane-kit echelon install --framework django
+npx --package agentic-control-plane-kit echelon install --framework express
+npx --package agentic-control-plane-kit echelon install --framework supabase
 ```
 
 `install` remains supported as the compatibility path for current ACP adopters and existing docs.
@@ -64,8 +64,8 @@ See [INSTALL.md](./INSTALL.md) for manual embedding and advanced setup.
 npm install agentic-control-plane-kit
 ```
 
-Use this only when you want to import kernel code directly in an existing app.
-For most teams, `npx echelon install` is the faster and safer path.
+Use this only when you have a TS-aware bundler/runtime for the current source exports.
+For most teams, `npx --package agentic-control-plane-kit echelon install` is the faster and safer path today.
 
 ## Public SDK Surface (Product-facing)
 
@@ -110,7 +110,8 @@ const client = createClient({
 const res = await client.call('meta.actions');
 ```
 
-Public config + migration docs: `docs/Echelon-CONFIG-SCHEMA.md`.
+Public config: [docs/Echelon-CONFIG-SCHEMA.md](./docs/Echelon-CONFIG-SCHEMA.md).  
+Bindings → config migration: [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md).  
 Compatibility bridge helpers: `toBindings()` and `fromBindings()` on the public SDK surface.
 
 > Legacy note: the sections below document the kernel-first embedding flow.

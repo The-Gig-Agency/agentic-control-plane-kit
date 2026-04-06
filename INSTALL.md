@@ -1,18 +1,20 @@
 # Installation Guide
 
-## Quick Start (Recommended)
+**Config migration:** If you use `controlplane.bindings.json` today, see [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md) for the path to `echelon.config.ts`.
 
-**Preferred path: use the CLI installer**
+## Quick start (recommended)
+
+**Preferred path: use the Echelon CLI installer**
 
 ```bash
-npx echelon install
+npx --package agentic-control-plane-kit echelon install
 ```
 
 The installer will:
 - Auto-detect your framework (Django, Express, Supabase)
 - Copy kernel into your project
 - Generate adapters, endpoint, bindings, and migrations
-- Optionally register with Governance Hub (Repo B)
+- Optionally register with hosted governance / registration (when configured)
 
 See [installer/README.md](./installer/README.md) for details.
 For installer ownership boundaries and readiness gates, see [installer/INSTALLER-V2-CONTRACT.md](./installer/INSTALLER-V2-CONTRACT.md).
@@ -41,6 +43,13 @@ git subtree add --prefix=control-plane \
 
 # Option C: npm package install (advanced)
 npm install agentic-control-plane-kit
+```
+
+The published CLI binary is exposed as `echelon`, but the package name remains
+`agentic-control-plane-kit`. For one-off CLI use without a global install, prefer:
+
+```bash
+npx --package agentic-control-plane-kit echelon install
 ```
 
 ### 2. Create Bindings File

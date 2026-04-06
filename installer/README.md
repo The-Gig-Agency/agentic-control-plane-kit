@@ -4,6 +4,18 @@ Automated installer for embedding the Agentic Control Plane kernel into SaaS app
 
 ---
 
+## Developing the CLI in this repo
+
+The published `echelon` binary is built to `dist/echelon.mjs` (not committed). After `npm install`, run:
+
+```bash
+npm run build:cli
+```
+
+Use `npx tsx installer/cli.ts …` or `npx tsx cli/echelon.ts …` if you are iterating without rebuilding the bundle.
+
+---
+
 ## Architecture
 
 The installer is **completely separate** from the kernel. This preserves kernel purity:
@@ -17,7 +29,7 @@ agentic-control-plane-kit/
 │   ├─ detect/          ← Framework detection
 │   ├─ generators/      ← Code generation
 │   ├─ installers/      ← Framework-specific installers
-│   └─ register/        ← Kernel registration with Repo B
+│   └─ register/        ← Optional kernel registration with hosted governance
 └─ cli/                 ← Published CLI wrapper
     └─ echelon.ts
 ```

@@ -2,14 +2,14 @@
 
 This file defines the documentation split for the Agentic Control Plane (ACP) repos.
 
-## Evaluator Path
+## Evaluator path
 
 For external reviewers, read in this order:
 
-1. [README.md](./README.md)
-2. [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)
+1. [README.md](./README.md) (public CLI + SDK path first)
+2. [INSTALL.md](./INSTALL.md)
 3. [spec/ACP-SPEC.md](./spec/ACP-SPEC.md)
-4. [INSTALL.md](./INSTALL.md)
+4. [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md) (maintainer / cross-repo depth)
 
 ## Canonical Source
 
@@ -34,6 +34,7 @@ These root docs are current and intended for active use:
 - [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md)
 - [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)
 - [docs/Echelon-CONFIG-SCHEMA.md](./docs/Echelon-CONFIG-SCHEMA.md)
+- [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md)
 - [docs/SDK-EXPORT-MAP.md](./docs/SDK-EXPORT-MAP.md)
 - [docs/INIT-PROTECT-STATE-MACHINE.md](./docs/INIT-PROTECT-STATE-MACHINE.md)
 - [docs/ECHELON-PUBLIC-SURFACE-MAP.md](./docs/ECHELON-PUBLIC-SURFACE-MAP.md)
@@ -42,6 +43,11 @@ These root docs are current and intended for active use:
 - [MCP-GATEWAY-SUMMARY.md](./MCP-GATEWAY-SUMMARY.md)
 - [MCP-REGISTRATION-AND-CREDENTIAL-STORAGE-IMPLEMENTATION.md](./MCP-REGISTRATION-AND-CREDENTIAL-STORAGE-IMPLEMENTATION.md)
 - [spec/ACP-SPEC.md](./spec/ACP-SPEC.md)
+
+## Maintainer audits (tickets)
+
+- [docs/maintainer/TGA-177-public-doc-leakage-audit.md](./docs/maintainer/TGA-177-public-doc-leakage-audit.md)
+- [docs/maintainer/TGA-178-cli-packaging-audit.md](./docs/maintainer/TGA-178-cli-packaging-audit.md)
 
 ## Repo Roles
 
