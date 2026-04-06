@@ -1,6 +1,6 @@
-# Agentic Control Plane Kit
+# Echelon — Agentic Control Plane Kit
 
-A reusable starter kit for adding a `/manage` control-plane API to any multi-tenant SaaS platform.
+A reusable starter kit for adding a `/manage` control-plane API to any multi-tenant SaaS platform. **Echelon** is the product-shaped CLI and config story on top of this kit; the npm package name remains `agentic-control-plane-kit` for compatibility.
 
 ## Overview
 
@@ -13,13 +13,13 @@ This kit provides:
 - **Bindings** — Repo-specific configuration layer
 - **Conformance Tests** — HTTP-based tests; run against any `/manage` endpoint
 
-## Evaluator Start Here
+## Evaluator start here
 
 If you're reviewing ACP from LinkedIn/GitHub, use this order:
 
-1. **Quick install (preferred):** [Quickstart](#quickstart)
-2. **Architecture model:** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md)
-3. **Implementation details:** [INSTALL.md](./INSTALL.md)
+1. **Public path (preferred):** [Quickstart](#quickstart) — CLI + SDK + `echelon.config.ts` without multi-repo setup.
+2. **Manual / advanced embedding:** [INSTALL.md](./INSTALL.md)
+3. **Full multi-repo architecture (maintainers):** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md) — internal choreography; not required for app integration.
 
 ## Quickstart
 
@@ -110,7 +110,8 @@ const client = createClient({
 const res = await client.call('meta.actions');
 ```
 
-Public config + migration docs: `docs/Echelon-CONFIG-SCHEMA.md`.
+Public config: [docs/Echelon-CONFIG-SCHEMA.md](./docs/Echelon-CONFIG-SCHEMA.md).  
+Bindings → config migration: [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md).  
 Compatibility bridge helpers: `toBindings()` and `fromBindings()` on the public SDK surface.
 
 > Legacy note: the sections below document the kernel-first embedding flow.

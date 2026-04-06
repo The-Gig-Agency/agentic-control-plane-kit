@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'node:url';
+import { getAgenticKitPackageRoot } from '../kit-root.js';
 import type { InstallOptions, Environment } from '../cli-types.js';
 import { generateAdapters } from '../generators/generate-adapters.js';
 import { generateEndpoint } from '../generators/generate-endpoint.js';
@@ -90,8 +90,7 @@ export async function installExpress(options: InstallOptions & { env?: Environme
 }
 
 async function copyKernel(targetDir: string, kernelType: 'typescript' | 'python'): Promise<void> {
-  const installerDir = path.dirname(fileURLToPath(import.meta.url));
-  const repoRoot = path.resolve(installerDir, '../..');
+  const repoRoot = getAgenticKitPackageRoot();
   
   const kernelSource = path.join(repoRoot, 'kernel', 'src');
   const kernelTarget = path.join(targetDir, 'kernel', 'src');

@@ -20,14 +20,29 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "echelon": "./cli/echelon.ts"
+    "echelon": "./dist/echelon.mjs"
   },
+  "files": [
+    "dist/echelon.mjs",
+    "cli",
+    "kernel",
+    "kernel-py",
+    "packs",
+    "config",
+    "examples",
+    "spec",
+    "installer",
+    "*.md",
+    "DOCS-INDEX.md"
+  ],
   "scripts": {
     "test": "vitest",
     "test:invariants": "vitest tests/invariants.spec.ts",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "verify": "tsx scripts/verify.ts",
     "build": "tsc",
+    "build:cli": "esbuild cli/echelon.ts --bundle --platform=node --target=node18 --outfile=dist/echelon.mjs --format=esm --packages=external",
+    "prepublishOnly": "npm run build:cli",
     "typecheck": "tsc --noEmit",
     "test:conformance": "vitest tests/conformance/conformance.spec.ts",
     "validate:installer": "bash installer/test/validate-installer.sh",
@@ -46,6 +61,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "esbuild": "^0.25.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"

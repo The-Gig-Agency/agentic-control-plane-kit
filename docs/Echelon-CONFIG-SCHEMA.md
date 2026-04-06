@@ -15,6 +15,8 @@ Ticket coverage:
 2. Exclude internal-only installer keys from the public schema.
 3. Make migration from `controlplane.bindings.json` a mechanical mapping.
 
+Step-by-step migration guide: [MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md).
+
 ---
 
 ## 2. Public Shape (TypeScript)
