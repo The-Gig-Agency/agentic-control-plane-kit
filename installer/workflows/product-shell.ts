@@ -1,4 +1,6 @@
 import { detectFramework, type Framework } from '../detect/index.js';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 
 export type ProductShellWorkflowName = 'login' | 'link' | 'environment' | 'init' | 'protect';
 export type ProductShellWorkflowStatus = 'pending' | 'ready' | 'blocked';
@@ -38,6 +40,47 @@ export interface ProductShellWorkflowPlan {
   steps: ProductShellStep[];
 }
 
+export interface ProductShellWorkflowExecution {
+  plan: ProductShellWorkflowPlan;
+  status: ProductShellWorkflowStatus;
+  summary: string;
+  nextAction: string;
+  stateFile?: string;
+  authUrl?: string;
+  dashboardUrl?: string;
+  data?: Record<string, unknown>;
+}
+
+interface ProductShellSessionState {
+  kind: 'session';
+  status: 'authenticated';
+  userId: string;
+  authUrl: string;
+  createdAt: string;
+}
+
+interface ProductShellLinkState {
+  kind: 'project-link';
+  projectName: string;
+  projectSlug: string;
+  projectId: string;
+  framework: Framework;
+  linkedAt: string;
+  dashboardUrl: string;
+}
+
+interface ProductShellEnvironmentState {
+  kind: 'environment';
+  env: 'development' | 'staging' | 'production';
+  projectId: string;
+  projectSlug: string;
+  updatedAt: string;
+  dashboardUrl: string;
+}
+
+const EchelonGitignoreEntry = '.echelon/';
+const ForbiddenStateKeyPattern = /(token|secret|password|api[-_]?key)/i;
+
 function deriveProjectName(cwd: string, explicit?: string): string {
   if (explicit && explicit.trim()) {
     return explicit.trim();
@@ -58,6 +101,114 @@ function normalizeContext(context: ProductShellContext, framework: Framework) {
     framework,
     projectName,
   };
+}
+
+function getStateDir(cwd: string): string {
+  return path.join(cwd, '.echelon');
+}
+
+function getGitignorePath(cwd: string): string {
+  return path.join(cwd, '.gitignore');
+}
+
+function getSessionPath(cwd: string): string {
+  return path.join(getStateDir(cwd), 'session.json');
+}
+
+function getLinkPath(cwd: string): string {
+  return path.join(getStateDir(cwd), 'project-link.json');
+}
+
+function getEnvironmentPath(cwd: string): string {
+  return path.join(getStateDir(cwd), 'environment.json');
+}
+
+function slugifyProjectName(projectName: string): string {
+  return projectName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'echelon-project';
+}
+
+function buildDashboardUrl(projectSlug: string, env: 'development' | 'staging' | 'production'): string {
+  const baseUrl = process.env.ECHELON_DASHBOARD_BASE_URL || 'https://www.buyechelon.com';
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  return `${trimmed}/dashboard/${projectSlug}/${env}`;
+}
+
+function buildAuthUrl(projectName: string, env: 'development' | 'staging' | 'production'): string {
+  const baseUrl = process.env.ECHELON_AUTH_BASE_URL || 'https://www.buyechelon.com/login';
+  const url = new URL(baseUrl);
+  url.searchParams.set('project', projectName);
+  url.searchParams.set('env', env);
+  return url.toString();
+}
+
+async function ensureStateDir(cwd: string): Promise<void> {
+  await mkdir(getStateDir(cwd), { recursive: true });
+}
+
+function assertNoSecretLikeKeys(value: unknown, trail: string[] = []): void {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => assertNoSecretLikeKeys(entry, [...trail, String(index)]));
+    return;
+  }
+
+  for (const [key, nested] of Object.entries(value)) {
+    const nextTrail = [...trail, key];
+    if (ForbiddenStateKeyPattern.test(key)) {
+      throw new Error(
+        `Refusing to persist secret-like key "${nextTrail.join('.')}" in .echelon state. State files must remain metadata-only.`,
+      );
+    }
+    assertNoSecretLikeKeys(nested, nextTrail);
+  }
+}
+
+async function ensureGitignoreContains(cwd: string): Promise<void> {
+  const gitignorePath = getGitignorePath(cwd);
+  let current = '';
+  try {
+    current = await readFile(gitignorePath, 'utf-8');
+  } catch {
+    // create .gitignore on first stateful workflow run
+  }
+
+  const lines = current
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.includes(EchelonGitignoreEntry)) {
+    return;
+  }
+
+  const prefix = current.length > 0 && !current.endsWith('\n') ? '\n' : '';
+  const suffix = current.length > 0 ? '\n' : '';
+  await writeFile(gitignorePath, `${current}${prefix}${EchelonGitignoreEntry}${suffix}`, 'utf-8');
+}
+
+async function writeJsonState(filePath: string, value: unknown): Promise<void> {
+  assertNoSecretLikeKeys(value);
+  await writeFile(filePath, JSON.stringify(value, null, 2) + '\n', 'utf-8');
+  try {
+    await chmod(filePath, 0o600);
+  } catch {
+    // Best-effort hardening for local state files.
+  }
+}
+
+async function readJsonState<T>(filePath: string): Promise<T | null> {
+  try {
+    const raw = await readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    return null;
+  }
 }
 
 function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductShellWorkflowPlan {
@@ -308,5 +459,121 @@ export async function createProductShellWorkflowScaffold(
     environment: buildEnvironmentPlan(detected),
     init: buildInitPlan(detected),
     protect: buildProtectPlan(detected),
+  };
+}
+
+export async function runLoginWorkflow(
+  context: ProductShellContext = {},
+  opts: { userId?: string } = {},
+): Promise<ProductShellWorkflowExecution> {
+  const detected = await detectProductShellContext(context);
+  const plan = buildLoginPlan(detected);
+  const userId = opts.userId || process.env.ECHELON_USER_ID || process.env.USER || 'local-operator';
+  const authUrl = buildAuthUrl(detected.projectName, detected.env);
+  const sessionPath = getSessionPath(detected.cwd);
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(sessionPath, {
+    kind: 'session',
+    status: 'authenticated',
+    userId,
+    authUrl,
+    createdAt: new Date().toISOString(),
+  } satisfies ProductShellSessionState);
+
+  return {
+    plan,
+    status: 'ready',
+    summary: `Authenticated local operator session for ${userId}.`,
+    nextAction: `Run \`echelon link\` to attach ${detected.projectName} to a hosted Echelon project.`,
+    stateFile: sessionPath,
+    authUrl,
+    data: { userId },
+  };
+}
+
+export async function runLinkWorkflow(
+  context: ProductShellContext = {},
+): Promise<ProductShellWorkflowExecution> {
+  const detected = await detectProductShellContext(context);
+  const plan = buildLinkPlan(detected);
+  const session = await readJsonState<ProductShellSessionState>(getSessionPath(detected.cwd));
+
+  if (!session || session.kind !== 'session' || session.status !== 'authenticated') {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Link requires an authenticated local Echelon session.',
+      nextAction: 'Run `echelon login` first, then retry `echelon link`.',
+    };
+  }
+
+  const projectSlug = slugifyProjectName(detected.projectName);
+  const projectId = `echelon_${projectSlug}`;
+  const dashboardUrl = buildDashboardUrl(projectSlug, detected.env);
+  const linkPath = getLinkPath(detected.cwd);
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(linkPath, {
+    kind: 'project-link',
+    projectName: detected.projectName,
+    projectSlug,
+    projectId,
+    framework: detected.framework,
+    linkedAt: new Date().toISOString(),
+    dashboardUrl,
+  } satisfies ProductShellLinkState);
+
+  return {
+    plan,
+    status: 'ready',
+    summary: `Linked ${detected.projectName} to hosted project ${projectId}.`,
+    nextAction: `Run \`echelon env --env ${detected.env}\` to persist the active environment, then open ${dashboardUrl}.`,
+    stateFile: linkPath,
+    dashboardUrl,
+    data: { projectId, projectSlug },
+  };
+}
+
+export async function runEnvironmentWorkflow(
+  context: ProductShellContext = {},
+): Promise<ProductShellWorkflowExecution> {
+  const detected = await detectProductShellContext(context);
+  const plan = buildEnvironmentPlan(detected);
+  const link = await readJsonState<ProductShellLinkState>(getLinkPath(detected.cwd));
+
+  if (!link || link.kind !== 'project-link') {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Environment selection requires a linked Echelon project.',
+      nextAction: 'Run `echelon link` first to create the local project mapping.',
+    };
+  }
+
+  const dashboardUrl = buildDashboardUrl(link.projectSlug, detected.env);
+  const environmentPath = getEnvironmentPath(detected.cwd);
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(environmentPath, {
+    kind: 'environment',
+    env: detected.env,
+    projectId: link.projectId,
+    projectSlug: link.projectSlug,
+    updatedAt: new Date().toISOString(),
+    dashboardUrl,
+  } satisfies ProductShellEnvironmentState);
+
+  return {
+    plan,
+    status: 'ready',
+    summary: `Selected ${detected.env} as the active Echelon environment for ${link.projectId}.`,
+    nextAction: `Open ${dashboardUrl} or continue with \`echelon protect <connector>\`.`,
+    stateFile: environmentPath,
+    dashboardUrl,
+    data: { env: detected.env, projectId: link.projectId },
   };
 }
