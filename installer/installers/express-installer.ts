@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'node:url';
-import type { InstallOptions, Environment } from '../cli.js';
+import type { InstallOptions, Environment } from '../cli-types.js';
 import { generateAdapters } from '../generators/generate-adapters.js';
 import { generateEndpoint } from '../generators/generate-endpoint.js';
 import { generateBindings } from '../generators/generate-bindings.js';
