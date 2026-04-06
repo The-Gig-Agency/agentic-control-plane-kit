@@ -7,7 +7,7 @@
 **Preferred path: use the Echelon CLI installer**
 
 ```bash
-npx echelon install
+npx --package agentic-control-plane-kit echelon install
 ```
 
 The installer will:
@@ -43,6 +43,13 @@ git subtree add --prefix=control-plane \
 
 # Option C: npm package install (advanced)
 npm install agentic-control-plane-kit
+```
+
+The published CLI binary is exposed as `echelon`, but the package name remains
+`agentic-control-plane-kit`. For one-off CLI use without a global install, prefer:
+
+```bash
+npx --package agentic-control-plane-kit echelon install
 ```
 
 ### 2. Create Bindings File

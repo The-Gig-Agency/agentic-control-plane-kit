@@ -27,13 +27,13 @@ If you're reviewing ACP from LinkedIn/GitHub, use this order:
 
 ```bash
 # Detect project and scaffold readiness workflow
-npx echelon init
+npx --package agentic-control-plane-kit echelon init
 
 # Public workflow verbs
-npx echelon login
-npx echelon link
-npx echelon protect shopify
-npx echelon audit
+npx --package agentic-control-plane-kit echelon login
+npx --package agentic-control-plane-kit echelon link
+npx --package agentic-control-plane-kit echelon protect shopify
+npx --package agentic-control-plane-kit echelon audit
 ```
 
 The public CLI will:
@@ -45,9 +45,9 @@ The public CLI will:
 Legacy note:
 
 ```bash
-npx echelon install --framework django
-npx echelon install --framework express
-npx echelon install --framework supabase
+npx --package agentic-control-plane-kit echelon install --framework django
+npx --package agentic-control-plane-kit echelon install --framework express
+npx --package agentic-control-plane-kit echelon install --framework supabase
 ```
 
 `install` remains supported as the compatibility path for current ACP adopters and existing docs.
@@ -64,8 +64,8 @@ See [INSTALL.md](./INSTALL.md) for manual embedding and advanced setup.
 npm install agentic-control-plane-kit
 ```
 
-Use this only when you want to import kernel code directly in an existing app.
-For most teams, `npx echelon install` is the faster and safer path.
+Use this only when you have a TS-aware bundler/runtime for the current source exports.
+For most teams, `npx --package agentic-control-plane-kit echelon install` is the faster and safer path today.
 
 ## Public SDK Surface (Product-facing)
 
