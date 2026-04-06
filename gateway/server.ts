@@ -13,6 +13,7 @@ import { HealthMonitor } from './health.ts';
 import { MCPProxy } from './proxy.ts';
 import { MCPRequest, MCPResponse, Actor } from './types.ts';
 import { HttpControlPlaneAdapter } from './kernel-bridge.ts';
+import { getGatewayRuntimeEnv, validateGatewayRuntimeEnv } from './runtime-env.ts';
 import {
   ConfigurationError,
   NetworkError,
@@ -37,6 +38,8 @@ export { proxy, processManager, controlPlane, cache };
  */
 export async function initialize(): Promise<void> {
   console.log('[GATEWAY] Initializing MCP Gateway...');
+  const runtimeEnv = getGatewayRuntimeEnv();
+  validateGatewayRuntimeEnv(runtimeEnv, { requireControlPlane: true });
 
   // 1. Load configuration
   try {
@@ -53,15 +56,8 @@ export async function initialize(): Promise<void> {
   }
 
   // 2. Initialize ControlPlaneAdapter
-  const platformUrl = Deno.env.get('ACP_BASE_URL');
-  const kernelApiKey = Deno.env.get('ACP_KERNEL_KEY');
-
-  if (!platformUrl || !kernelApiKey) {
-    throw new ConfigurationError(
-      'ACP_BASE_URL and ACP_KERNEL_KEY environment variables required. ' +
-      'Set these to connect to Governance Hub (Repo B).'
-    );
-  }
+  const platformUrl = runtimeEnv.acpBaseUrl;
+  const kernelApiKey = runtimeEnv.kernelApiKey!;
 
   controlPlane = new HttpControlPlaneAdapter({
     platformUrl,

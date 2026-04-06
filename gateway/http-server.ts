@@ -5,36 +5,31 @@
  * Multi-tenant by default (identifies tenant via API key)
  */
 
-// Version stamp - shows what container is executing
-console.log("GATEWAY_BUILD", "2026-02-23T00:45Z", "git", Deno.env.get("FLY_IMAGE_REF") ?? "no-ref");
-
-// Sanitized env (never log secrets)
-const _acpBase = Deno.env.get("ACP_BASE_URL");
-const _acpKernelSet = !!Deno.env.get("ACP_KERNEL_KEY");
-let _acpOrigin = "(not set)";
-if (_acpBase) {
-  try {
-    _acpOrigin = new URL(_acpBase.replace(/\/functions\/v1\/?$/, '') + '/').origin;
-  } catch {
-    _acpOrigin = "(invalid URL)";
-  }
-}
-console.log("[Gateway] env", { ACP_BASE_URL: _acpOrigin, ACP_KERNEL_KEY_set: _acpKernelSet });
-
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { MCPRequest, MCPResponse } from './types.ts';
 import { extractTenantFromApiKey, extractActor } from './auth.ts';
-import { handleMCPRequest } from './server.ts';
 import { Actor } from './types.ts';
+import { ValidationError } from './errors.ts';
 import {
-  ConfigurationError,
-  AuthorizationError,
-  ValidationError,
-} from './errors.ts';
-
-// Import gateway initialization
+  getCorsHeaders,
+  getGatewayRuntimeEnv,
+} from './runtime-env.ts';
 import { initialize } from './server.ts';
 import type { MCPProxy } from './proxy.ts';
+
+// Version stamp - shows what container is executing
+console.log("GATEWAY_BUILD", "2026-02-23T00:45Z", "git", Deno.env.get("FLY_IMAGE_REF") ?? "no-ref");
+
+const runtimeEnv = getGatewayRuntimeEnv();
+console.log("[Gateway] env", {
+  ACP_BASE_URL: runtimeEnv.acpOrigin,
+  ACP_KERNEL_KEY_set: !!runtimeEnv.kernelApiKey,
+  ALLOWED_ORIGINS_count: runtimeEnv.allowedOrigins.length,
+  CORS_ALLOW_CREDENTIALS: runtimeEnv.allowCredentials,
+});
+if (runtimeEnv.environment === 'production' && runtimeEnv.allowedOrigins.length === 0) {
+  console.warn('[Gateway] ALLOWED_ORIGINS is empty in production; cross-origin browser access will be denied.');
+}
 
 // Initialize gateway (reuse existing initialization)
 let initialized = false;
@@ -54,35 +49,6 @@ async function ensureInitialized(): Promise<void> {
 }
 
 /**
- * Get CORS headers based on allowed origins
- */
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
-  const defaultOrigin = Deno.env.get('DEFAULT_CORS_ORIGIN') || 'https://echelon.com';
-  
-  // If no origin header, use default
-  if (!origin) {
-    return {
-      'Access-Control-Allow-Origin': defaultOrigin,
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
-      'Access-Control-Allow-Credentials': 'true',
-    };
-  }
-  
-  // Check if origin is allowed
-  const isAllowed = allowedOrigins.length === 0 || allowedOrigins.includes(origin);
-  const allowOrigin = isAllowed ? origin : defaultOrigin;
-  
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
-
-/**
  * Handle HTTP request
  * 
  * Exported for use by Vercel serverless functions
@@ -90,7 +56,7 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 export async function handleHttpRequest(req: Request): Promise<Response> {
   try {
     const origin = req.headers.get('Origin');
-    const corsHeaders = getCorsHeaders(origin);
+    const corsHeaders = getCorsHeaders(origin, runtimeEnv);
 
     // Handle OPTIONS (CORS preflight)
     if (req.method === 'OPTIONS') {
@@ -225,11 +191,8 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           // Config might not exist in serverless - return basic discovery info
           console.warn('[HTTP] Config not found, returning basic discovery info:', error);
           const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
-          let platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+          let platformUrl = runtimeEnv.acpBaseUrl;
           const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
-          
-          // Normalize platform URL - remove trailing /functions/v1 if present
-          platformUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
           
           // Build full registry endpoint URLs (hyphen format, not slash)
           const registryBase = `${platformUrl}/functions/v1`;
@@ -287,7 +250,7 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         }
         
         const { getDiscoveryInfo } = await import('./discovery.ts');
-        const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+        const platformUrl = runtimeEnv.acpBaseUrl;
         const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
         const discoveryInfo = await getDiscoveryInfo(
           config,
@@ -330,7 +293,7 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         console.error('[HTTP] Discovery error:', error);
         // Return basic discovery info even on error
         const signupApiBase = Deno.env.get('SIGNUP_API_BASE') || 'https://www.buyechelon.com';
-        const platformUrl = Deno.env.get('ACP_BASE_URL') || 'https://governance-hub.supabase.co';
+        const platformUrl = runtimeEnv.acpBaseUrl;
         const docsUrl = Deno.env.get('DOCS_URL') || 'https://github.com/The-Gig-Agency/echelon-control';
         
         // Build full registry endpoint URLs (hyphen format, not slash)
@@ -407,8 +370,7 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
 
       // TEMP: return details for debugging (gated by GATEWAY_DEBUG_ERR or non-prod)
       const debugErr = Deno.env.get('GATEWAY_DEBUG_ERR') === '1' || Deno.env.get('ENVIRONMENT') !== 'production';
-      const baseUrl = Deno.env.get('ACP_BASE_URL')?.replace(/\/functions\/v1\/?$/, '') ?? '(not set)';
-      const lookupUrl = `${baseUrl}/functions/v1/api-keys-lookup`;
+      const lookupUrl = `${runtimeEnv.acpBaseUrl}/functions/v1/api-keys-lookup`;
 
       return new Response(JSON.stringify({
         error: 'Invalid API key',
@@ -523,7 +485,7 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
     console.error('[HTTP] Error handling request:', error);
     
     const origin = req.headers.get('Origin');
-    const corsHeaders = getCorsHeaders(origin);
+    const corsHeaders = getCorsHeaders(origin, runtimeEnv);
     
     return new Response(JSON.stringify({
       error: 'Internal server error',

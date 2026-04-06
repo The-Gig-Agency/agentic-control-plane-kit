@@ -6,6 +6,7 @@
  */
 
 import { Actor, MCPConnectionMetadata } from './types.ts';
+import { normalizeAcpBaseUrl } from './runtime-env.ts';
 
 /**
  * Extract tenant ID from environment variable (Phase 1)
@@ -110,7 +111,7 @@ export async function extractTenantFromApiKey(
 
   // Normalize platform URL - remove trailing /functions/v1 if present
   // (ACP_BASE_URL may already include it; prevents duplication)
-  const baseUrl = platformUrl.replace(/\/functions\/v1\/?$/, '');
+  const baseUrl = normalizeAcpBaseUrl(platformUrl);
   const lookupUrl = `${baseUrl}/functions/v1/api-keys-lookup`;
 
   // Check cache first (if implemented)
