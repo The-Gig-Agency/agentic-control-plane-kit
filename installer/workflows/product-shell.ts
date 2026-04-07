@@ -225,9 +225,9 @@ function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductSh
   return {
     workflow: 'login',
     publicCommand: 'echelon login',
-    status: hostedConfigured ? 'ready' : 'blocked',
+    status: hostedConfigured ? 'pending' : 'blocked',
     summary: hostedConfigured
-      ? 'Authenticate the operator via hosted orchestration.'
+      ? 'Authenticate the operator via hosted orchestration (configured; runtime availability verified at execution time).'
       : 'Authenticate the operator via hosted orchestration. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['user credentials or browser auth handoff'],
@@ -266,9 +266,9 @@ function buildLinkPlan(context: ReturnType<typeof normalizeContext>): ProductShe
   return {
     workflow: 'link',
     publicCommand: 'echelon link',
-    status: hostedConfigured ? 'ready' : 'blocked',
+    status: hostedConfigured ? 'pending' : 'blocked',
     summary: hostedConfigured
-      ? 'Link the local app to a hosted Echelon project.'
+      ? 'Link the local app to a hosted Echelon project (configured; runtime availability verified at execution time).'
       : 'Link the local app to a hosted Echelon project. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['target Echelon project selection'],
@@ -314,9 +314,9 @@ function buildEnvironmentPlan(context: ReturnType<typeof normalizeContext>): Pro
   return {
     workflow: 'environment',
     publicCommand: 'echelon env',
-    status: hostedConfigured ? 'ready' : 'blocked',
+    status: hostedConfigured ? 'pending' : 'blocked',
     summary: hostedConfigured
-      ? 'Select or create the product environment via hosted orchestration.'
+      ? 'Select or create the product environment via hosted orchestration (configured; runtime availability verified at execution time).'
       : 'Select or create the product environment via hosted orchestration. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['environment selection or creation intent'],
@@ -503,11 +503,27 @@ export async function runLoginWorkflow(
   }
 
   const sessionPath = getSessionPath(detected.cwd);
-  const start = await hostedLoginStart({
-    project_name: detected.projectName,
-    env: detected.env,
-    framework: detected.framework,
-  });
+  let start: Awaited<ReturnType<typeof hostedLoginStart>>;
+  try {
+    start = await hostedLoginStart({
+      project_name: detected.projectName,
+      env: detected.env,
+      framework: detected.framework,
+    });
+  } catch (error) {
+    const msg =
+      error instanceof HostedOrchestrationError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Unable to start hosted login.';
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Hosted login start failed.',
+      nextAction: msg,
+    };
+  }
 
   // Poll for completion. We do NOT persist any token/poll identifier.
   const timeoutMs = Number(process.env.ECHELON_LOGIN_TIMEOUT_MS || 120_000);
@@ -521,12 +537,30 @@ export async function runLoginWorkflow(
         plan,
         status: 'blocked',
         summary: 'Timed out waiting for hosted login to complete.',
-        nextAction: 'Complete the browser auth step and re-run `echelon login`.',
+        nextAction:
+          'Complete the browser auth step and re-run `echelon login`. (This CLI does not persist poll IDs; each run starts a fresh login handshake.)',
         authUrl: start.auth_url,
       };
     }
 
-    const poll = await hostedLoginPoll({ poll_id: start.poll_id });
+    let poll: Awaited<ReturnType<typeof hostedLoginPoll>>;
+    try {
+      poll = await hostedLoginPoll({ poll_id: start.poll_id });
+    } catch (error) {
+      const msg =
+        error instanceof HostedOrchestrationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Unable to poll hosted login.';
+      return {
+        plan,
+        status: 'blocked',
+        summary: 'Hosted login poll failed.',
+        nextAction: msg,
+        authUrl: start.auth_url,
+      };
+    }
     if (poll.status === 'pending') {
       await new Promise((r) => setTimeout(r, intervalMs));
       continue;
