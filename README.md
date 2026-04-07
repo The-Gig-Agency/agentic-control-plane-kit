@@ -29,10 +29,7 @@ If you're reviewing ACP from LinkedIn/GitHub, use this order:
 # Detect project and scaffold readiness workflow
 npx --package agentic-control-plane-kit echelon init
 
-# Public workflow verbs
-npx --package agentic-control-plane-kit echelon login
-npx --package agentic-control-plane-kit echelon link
-npx --package agentic-control-plane-kit echelon env --env staging
+# Readiness gate before using connector verbs
 npx --package agentic-control-plane-kit echelon protect shopify
 npx --package agentic-control-plane-kit echelon audit
 ```
@@ -40,9 +37,12 @@ npx --package agentic-control-plane-kit echelon audit
 The public CLI will:
 - auto-detect your framework
 - scaffold/init ACP kernel artifacts through a product-facing workflow
-- persist local `.echelon/*.json` metadata-only state for login/link/environment workflows (never secrets or tokens)
-- expose guided next steps for link, env, protect, and audit
+- expose guided next steps for protect and audit
 - avoid surfacing raw governance or executor wiring in the normal path
+
+Planned / hosted orchestration (currently blocked):
+
+- `echelon login`, `echelon link`, and `echelon env` are **planned** and currently **blocked until hosted orchestration exists**. They do **not** persist `.echelon/*.json` state today.
 
 Legacy note:
 
@@ -66,8 +66,13 @@ See [INSTALL.md](./INSTALL.md) for manual embedding and advanced setup.
 npm install agentic-control-plane-kit
 ```
 
-Use this only when you have a TS-aware bundler/runtime for the current source exports.
-For most teams, `npx --package agentic-control-plane-kit echelon install` is the faster and safer path today.
+The package now ships **built JavaScript (`dist/*.mjs`) and type declarations (`dist/types/*`)** for the public entrypoints:
+
+- `agentic-control-plane-kit` (core)
+- `agentic-control-plane-kit/sdk`
+- `agentic-control-plane-kit/packs`
+
+For most teams, `npx --package agentic-control-plane-kit echelon init` is the faster onboarding path.
 
 ## Public SDK Surface (Product-facing)
 

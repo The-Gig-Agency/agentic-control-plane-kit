@@ -224,17 +224,14 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public operator login (product-shell workflow)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
-    .option('--user-id <userId>', 'Local operator identifier to persist in the session state')
-    .option('--plan', 'Show the workflow plan without executing local orchestration')
+    .option('--plan', 'Show the workflow plan (login is blocked until hosted orchestration exists)')
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { env: string; framework: string; userId?: string; plan?: boolean; json?: boolean }) => {
+    .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
       if (!opts.plan) {
         const execution = await runLoginWorkflow({
           cwd: process.cwd(),
           env: opts.env as Environment,
           framework: parseFrameworkOption(opts.framework),
-        }, {
-          userId: opts.userId,
         });
         printWorkflowExecution(execution, opts.json);
         return;
