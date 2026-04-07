@@ -112,7 +112,7 @@ describe('product-shell workflow scaffold', () => {
     expect(scaffold.link.context).toEqual(scaffold.environment.context);
   });
 
-  it('persists local login state and returns the next link action', async () => {
+  it('blocks login (no fake session persistence) until hosted orchestration exists', async () => {
     detectFrameworkMock.mockResolvedValueOnce('express');
 
     const cwd = makeTempDir('echelon-login');
@@ -123,45 +123,24 @@ describe('product-shell workflow scaffold', () => {
       userId: 'alan',
     });
 
-    expect(result.status).toBe('ready');
-    expect(result.stateFile).toContain('.echelon/session.json');
+    expect(result.status).toBe('blocked');
     expect(result.authUrl).toContain('project=echelon-login');
-    const saved = JSON.parse(fs.readFileSync(path.join(cwd, '.echelon', 'session.json'), 'utf-8'));
-    expect(saved.userId).toBe('alan');
-    const gitignore = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf-8');
-    expect(gitignore).toContain('.echelon/');
+    expect(fs.existsSync(path.join(cwd, '.echelon'))).toBe(false);
   });
 
-  it('blocks link until a login session exists, then persists project link state', async () => {
-    const blockedCwd = makeTempDir('echelon-link-blocked');
+  it('blocks link (no fake project IDs) until hosted orchestration exists', async () => {
+    const blockedCwd = makeTempDir('echelon-link');
     detectFrameworkMock.mockResolvedValueOnce('express');
     const blocked = await runLinkWorkflow({
       cwd: blockedCwd,
     });
     expect(blocked.status).toBe('blocked');
-
-    const readyCwd = makeTempDir('echelon-link-ready');
-    detectFrameworkMock.mockResolvedValueOnce('express');
-    await runLoginWorkflow({ cwd: readyCwd }, { userId: 'alan' });
-    detectFrameworkMock.mockResolvedValueOnce('express');
-    const linked = await runLinkWorkflow({
-      cwd: readyCwd,
-      env: 'production',
-      projectName: 'echelon-link-ready',
-    });
-
-    expect(linked.status).toBe('ready');
-    expect(linked.dashboardUrl).toContain('/dashboard/echelon-link-ready/production');
-    const saved = JSON.parse(fs.readFileSync(path.join(readyCwd, '.echelon', 'project-link.json'), 'utf-8'));
-    expect(saved.projectId).toBe('echelon_echelon-link-ready');
+    expect(fs.existsSync(path.join(blockedCwd, '.echelon'))).toBe(false);
   });
 
-  it('persists environment state after link orchestration', async () => {
+  it('blocks env selection (no fake env state) until hosted orchestration exists', async () => {
     const cwd = makeTempDir('echelon-env');
     detectFrameworkMock.mockResolvedValueOnce('supabase');
-    await runLoginWorkflow({ cwd }, { userId: 'alan' });
-    detectFrameworkMock.mockResolvedValueOnce('supabase');
-    await runLinkWorkflow({ cwd, env: 'development', projectName: 'echelon-env' });
     detectFrameworkMock.mockResolvedValueOnce('supabase');
     const envResult = await runEnvironmentWorkflow({
       cwd,
@@ -169,22 +148,9 @@ describe('product-shell workflow scaffold', () => {
       projectName: 'echelon-env',
     });
 
-    expect(envResult.status).toBe('ready');
-    expect(envResult.dashboardUrl).toContain('/dashboard/echelon-env/staging');
-    const saved = JSON.parse(fs.readFileSync(path.join(cwd, '.echelon', 'environment.json'), 'utf-8'));
-    expect(saved.env).toBe('staging');
+    expect(envResult.status).toBe('blocked');
+    expect(fs.existsSync(path.join(cwd, '.echelon'))).toBe(false);
   });
 
-  it('appends .echelon to an existing gitignore without clobbering entries', async () => {
-    detectFrameworkMock.mockResolvedValueOnce('express');
-
-    const cwd = makeTempDir('echelon-gitignore');
-    fs.writeFileSync(path.join(cwd, '.gitignore'), 'node_modules/\n');
-
-    await runLoginWorkflow({ cwd }, { userId: 'alan' });
-
-    const gitignore = fs.readFileSync(path.join(cwd, '.gitignore'), 'utf-8');
-    expect(gitignore).toContain('node_modules/');
-    expect(gitignore).toContain('.echelon/');
-  });
+  // Note: .echelon/gitignore behavior is exercised once hosted orchestration exists.
 });
