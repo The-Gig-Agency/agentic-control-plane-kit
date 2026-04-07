@@ -15,7 +15,7 @@ import {
 } from './errors.ts';
 import {
   buildConnectorSummariesFromDiscovery,
-  buildEmptyAuditResponse,
+  buildPublicErrorResponse,
   buildPublicDiscoverResponse,
   buildPublicEvaluateResponse,
   buildPublicExecuteBlockedResponse,
@@ -428,6 +428,24 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
       }
     }
 
+    if (path === '/audit' && req.method === 'GET') {
+      // TGA-181: Do not return placeholder success responses for audit.
+      // Audit query is not yet backed by a stable governance/gateway datastore.
+      // This route is intentionally reachable without auth, since there is no implementation anyway.
+      return new Response(
+        JSON.stringify(
+          buildPublicErrorResponse(
+            'audit_unavailable',
+            'Audit query is not available yet on the public facade. This endpoint will return real entries once a stable backend is finalized.',
+          ),
+        ),
+        {
+          status: 501,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
     // Extract API key from headers only (SECURITY: query params can leak in logs)
     const apiKey = req.headers.get('X-API-Key');
 
@@ -549,12 +567,6 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-    }
-
-    if (path === '/audit' && req.method === 'GET') {
-      return new Response(JSON.stringify(buildEmptyAuditResponse()), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     // Handle MCP protocol endpoint

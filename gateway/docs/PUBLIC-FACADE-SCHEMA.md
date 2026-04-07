@@ -6,7 +6,7 @@ Current implementation status:
 
 - `GET /discover`, `POST /register`, `POST /evaluate`, `POST /execute`, and `GET /audit` now exist as additive HTTP facade routes in `gateway/http-server.ts`
 - legacy MCP discovery (`GET /meta.discover`) and MCP transport (`POST /mcp`) remain supported for existing adopters during migration
-- `/audit` is currently a placeholder facade response until a stable product-shaped audit query backend is finalized
+- `/audit` is currently **unavailable** (returns `501`) until a stable product-shaped audit query backend is finalized
 
 Purpose:
 
@@ -135,6 +135,11 @@ Purpose:
 
 - expose product-facing audit query results for project activity
 
+Current status:
+
+- This endpoint returns `501 Not Implemented` until a stable audit query backend is available.
+- **It must not return a placeholder “success” response** that implies audit data exists when it does not.
+
 Request type:
 
 - `PublicAuditRequest`
@@ -142,6 +147,10 @@ Request type:
 Response type:
 
 - `PublicAuditResponse`
+
+Until implemented, error responses are:
+
+- `501` with `{ error: "audit_unavailable", message: string }`
 
 Current ACP source material:
 
