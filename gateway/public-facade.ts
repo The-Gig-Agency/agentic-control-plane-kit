@@ -1,5 +1,6 @@
 import type {
   PublicAuditResponse,
+  PublicAuditEntry,
   PublicConnectorSummary,
   PublicDiscoverResponse,
   PublicEvaluateResponse,
@@ -158,4 +159,30 @@ export function buildEmptyAuditResponse(): PublicAuditResponse {
 
 export function buildPublicErrorResponse(code: string, message: string): { error: string; message: string } {
   return { error: code, message };
+}
+
+export function buildPublicAuditResponseFromRows(input: {
+  project: string;
+  env: 'development' | 'staging' | 'production';
+  rows: Array<Record<string, unknown>>;
+}): PublicAuditResponse {
+  const entries: PublicAuditEntry[] = (input.rows || []).map((row) => {
+    const createdAt = String(row.created_at || row.ts || new Date().toISOString());
+    const action = String(row.action || row.tool || 'unknown');
+    const connector = action.includes('.') ? action.split('.')[0] : 'unknown';
+
+    return {
+      audit_id: String(row.audit_id || row.event_id || row.decision_id || 'unknown'),
+      project: input.project,
+      env: input.env,
+      connector,
+      action,
+      actor_id: String(row.actor_id || row.actor?.id || row.api_key_id || 'unknown'),
+      decision: (row.decision || row.status || 'deny') as any,
+      execution_status: (row.execution_status || 'completed') as any,
+      created_at: createdAt,
+    };
+  });
+
+  return { entries };
 }

@@ -16,6 +16,7 @@ import {
 import {
   buildConnectorSummariesFromDiscovery,
   buildPublicErrorResponse,
+  buildPublicAuditResponseFromRows,
   buildPublicDiscoverResponse,
   buildPublicEvaluateResponse,
   buildPublicExecuteBlockedResponse,
@@ -428,24 +429,6 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
       }
     }
 
-    if (path === '/audit' && req.method === 'GET') {
-      // TGA-181: Do not return placeholder success responses for audit.
-      // Audit query is not yet backed by a stable governance/gateway datastore.
-      // This route is intentionally reachable without auth, since there is no implementation anyway.
-      return new Response(
-        JSON.stringify(
-          buildPublicErrorResponse(
-            'audit_unavailable',
-            'Audit query is not available yet on the public facade. This endpoint will return real entries once a stable backend is finalized.',
-          ),
-        ),
-        {
-          status: 501,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
     // Extract API key from headers only (SECURITY: query params can leak in logs)
     const apiKey = req.headers.get('X-API-Key');
 
@@ -480,6 +463,72 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    if (path === '/audit' && req.method === 'GET') {
+      const url = new URL(req.url);
+      const project = url.searchParams.get('project')?.trim() || '';
+      const env = (url.searchParams.get('env')?.trim() || 'production') as 'development' | 'staging' | 'production';
+
+      if (!project) {
+        return new Response(JSON.stringify({
+          error: 'project query param required',
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const auditQueryUrl = `${runtimeEnv.acpBaseUrl}/functions/v1/audit-query`;
+      try {
+        const resp = await fetch(auditQueryUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${runtimeEnv.kernelApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tenant_id: tenantId,
+            project,
+            env,
+            connector: url.searchParams.get('connector')?.trim() || undefined,
+            action: url.searchParams.get('action')?.trim() || undefined,
+            actor_id: url.searchParams.get('actor_id')?.trim() || undefined,
+            decision_id: url.searchParams.get('decision_id')?.trim() || undefined,
+          }),
+        });
+
+        if (!resp.ok) {
+          const bodyText = await resp.text().catch(() => '');
+          return new Response(JSON.stringify(buildPublicErrorResponse(
+            'audit_backend_error',
+            `Audit backend returned ${resp.status}. ${bodyText || 'No details.'}`,
+          )), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const payload = await resp.json().catch(() => ({}));
+        const rows = (payload?.data?.rows || payload?.rows || payload?.data || []) as Array<Record<string, unknown>>;
+
+        return new Response(JSON.stringify(buildPublicAuditResponseFromRows({
+          project,
+          env,
+          rows,
+        })), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify(buildPublicErrorResponse(
+          'audit_unavailable',
+          `Audit query is currently unavailable. ${message}`,
+        )), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     if (path === '/evaluate' && req.method === 'POST') {
