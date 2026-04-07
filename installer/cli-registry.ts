@@ -407,7 +407,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .option('--approval-id <id>', 'Approval identifier returned from governance decision')
     .option('--decision-id <id>', 'Decision identifier returned from /evaluate (optional)')
     .option('--actor-id <id>', 'Operator identity (optional)')
-    .option('--governance-hub-url <url>', 'Override Governance Hub URL (default: GOVENANCE_HUB_URL)')
+    .option('--governance-hub-url <url>', 'Override ACP_BASE_URL for Governance Hub (default: ACP_BASE_URL; legacy: GOVENANCE_HUB_URL)')
     .option('--kernel-api-key <key>', 'Override kernel API key (default: ACP_KERNEL_KEY)')
     .option('--endpoint-url <url>', 'Override approve endpoint URL')
     .option('--json', 'Output machine-readable JSON')

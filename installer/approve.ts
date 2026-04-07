@@ -20,13 +20,13 @@ export interface ApproveResult {
 }
 
 export async function approve(opts: ApproveOptions): Promise<ApproveResult> {
-  const governanceHubUrl = opts.governanceHubUrl || process.env.GOVERNANCE_HUB_URL;
+  const governanceHubUrl = opts.governanceHubUrl || process.env.ACP_BASE_URL || process.env.GOVERNANCE_HUB_URL;
   const kernelApiKey = opts.kernelApiKey || process.env.ACP_KERNEL_KEY;
 
   if (!governanceHubUrl) {
     return {
       ok: false,
-      message: 'GOVERNANCE_HUB_URL is required for `echelon approve`.',
+      message: 'ACP_BASE_URL is required for `echelon approve` (GOVERNANCE_HUB_URL is a legacy fallback).',
     };
   }
   if (!kernelApiKey) {
@@ -84,11 +84,24 @@ export async function approve(opts: ApproveOptions): Promise<ApproveResult> {
     };
   }
 
+  // Fail closed: require explicit success signal.
+  const status = (payload?.status ?? 'unknown') as ApproveResult['status'];
+  const ok = payload?.ok === true || status === 'approved';
+  if (!ok) {
+    return {
+      ok: false,
+      approval_id: payload?.approval_id ?? opts.approvalId,
+      decision_id: payload?.decision_id ?? opts.decisionId,
+      status,
+      message: payload?.message || payload?.error || 'Approval response was missing an explicit success signal.',
+    };
+  }
+
   return {
-    ok: payload?.ok ?? true,
+    ok: true,
     approval_id: payload?.approval_id ?? opts.approvalId,
     decision_id: payload?.decision_id ?? opts.decisionId,
-    status: payload?.status ?? 'unknown',
+    status,
     message: payload?.message,
   };
 }
