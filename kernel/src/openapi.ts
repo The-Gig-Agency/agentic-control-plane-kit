@@ -2,7 +2,7 @@
  * OpenAPI 3.0 specification generator
  */
 
-import { ActionDef } from './types.ts';
+import { ActionDef } from './types';
 
 export interface OpenAPISpec {
   openapi: string;
@@ -14,6 +14,7 @@ export interface OpenAPISpec {
   paths: Record<string, any>;
   components?: {
     schemas?: Record<string, any>;
+    securitySchemes?: Record<string, any>;
   };
 }
 

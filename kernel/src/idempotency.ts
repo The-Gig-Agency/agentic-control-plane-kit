@@ -2,7 +2,7 @@
  * Idempotency cache utilities
  */
 
-import { IdempotencyAdapter } from './types.ts';
+import { IdempotencyAdapter } from './types';
 
 export async function getIdempotencyReplay(
   adapter: IdempotencyAdapter,

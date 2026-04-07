@@ -2,20 +2,20 @@
   "name": "agentic-control-plane-kit",
   "version": "0.1.0",
   "description": "Reusable starter kit for adding /manage control-plane API to multi-tenant SaaS platforms",
-  "main": "kernel/index.ts",
-  "types": "kernel/index.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/types/kernel/index.d.ts",
   "exports": {
     ".": {
-      "types": "./kernel/index.ts",
-      "default": "./kernel/index.ts"
+      "types": "./dist/types/kernel/index.d.ts",
+      "default": "./dist/index.mjs"
     },
     "./sdk": {
-      "types": "./kernel/src/sdk.ts",
-      "default": "./kernel/src/sdk.ts"
+      "types": "./dist/types/sdk/index.d.ts",
+      "default": "./dist/sdk/index.mjs"
     },
     "./packs": {
-      "types": "./packs/index.ts",
-      "default": "./packs/index.ts"
+      "types": "./dist/types/packs/index.d.ts",
+      "default": "./dist/packs/index.mjs"
     },
     "./package.json": "./package.json"
   },
@@ -24,6 +24,10 @@
   },
   "files": [
     "dist/echelon.mjs",
+    "dist/index.mjs",
+    "dist/sdk/index.mjs",
+    "dist/packs/index.mjs",
+    "dist/types",
     "cli",
     "kernel",
     "kernel-py",
@@ -32,6 +36,7 @@
     "examples",
     "spec",
     "installer",
+    "sdk",
     "*.md",
     "DOCS-INDEX.md"
   ],
@@ -42,7 +47,12 @@
     "verify": "tsx scripts/verify.ts",
     "build": "tsc",
     "build:cli": "esbuild cli/echelon.ts --bundle --platform=node --target=node18 --outfile=dist/echelon.mjs --format=esm --packages=external",
-    "prepublishOnly": "npm run build:cli",
+    "build:sdk": "esbuild sdk/index.ts --bundle --platform=node --target=node18 --outfile=dist/sdk/index.mjs --format=esm --packages=external",
+    "build:packs": "esbuild packs/index.ts --bundle --platform=node --target=node18 --outfile=dist/packs/index.mjs --format=esm --packages=external",
+    "build:core": "esbuild kernel/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.mjs --format=esm --packages=external",
+    "build:types": "tsc -p tsconfig.publish.json",
+    "build:pkg": "npm run build:core && npm run build:sdk && npm run build:packs && npm run build:types",
+    "prepublishOnly": "npm run build:cli && npm run build:pkg",
     "typecheck": "tsc --noEmit",
     "test:conformance": "vitest tests/conformance/conformance.spec.ts",
     "validate:installer": "bash installer/test/validate-installer.sh",

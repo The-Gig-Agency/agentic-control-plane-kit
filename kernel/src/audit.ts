@@ -2,8 +2,8 @@
  * Audit logging utilities
  */
 
-import { AuditAdapter, AuditEntry } from './types.ts';
-import { sanitize, canonicalJson } from './sanitize.ts';
+import { AuditAdapter, AuditEntry } from './types';
+import { sanitize, canonicalJson } from './sanitize';
 
 export async function logAudit(
   adapter: AuditAdapter,

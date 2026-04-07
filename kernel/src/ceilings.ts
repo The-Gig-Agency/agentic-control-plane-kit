@@ -2,7 +2,7 @@
  * Hard ceiling enforcement utilities
  */
 
-import { CeilingsAdapter } from './types.ts';
+import { CeilingsAdapter } from './types';
 
 export interface CeilingConfig {
   name: string;

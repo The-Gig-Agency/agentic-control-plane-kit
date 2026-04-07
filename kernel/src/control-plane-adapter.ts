@@ -121,12 +121,12 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
         throw new Error(`Platform unreachable: ${response.status}`);
       }
       
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `Authorization failed: ${response.status}`);
+      const error: any = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error?.error || `Authorization failed: ${response.status}`);
     }
 
-    const result = await response.json();
-    return result.data || result;
+    const result: any = await response.json();
+    return result?.data || result;
   }
 
   async proposePolicy(request: ProposalRequest): Promise<ProposalResponse> {
@@ -140,12 +140,12 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `Policy proposal failed: ${response.status}`);
+      const error: any = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error?.error || `Policy proposal failed: ${response.status}`);
     }
 
-    const result = await response.json();
-    return result.data || result;
+    const result: any = await response.json();
+    return result?.data || result;
   }
 
   async heartbeat(request: HeartbeatRequest): Promise<HeartbeatResponse> {
@@ -159,14 +159,14 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const error: any = await response.json().catch(() => ({ error: 'Unknown error' }));
       return {
         ok: false,
-        error: error.error || `Heartbeat failed: ${response.status}`,
+        error: error?.error || `Heartbeat failed: ${response.status}`,
       };
     }
 
-    const result = await response.json();
-    return result.data || result;
+    const result: any = await response.json();
+    return result?.data || result;
   }
 }

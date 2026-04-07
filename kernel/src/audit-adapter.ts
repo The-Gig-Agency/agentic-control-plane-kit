@@ -2,8 +2,8 @@
  * AuditAdapter implementations for sending audit events to external services
  */
 
-import { AuditAdapter, AuditEvent, AuditEntry } from './types.ts';
-import { extractPack } from './audit-event.ts';
+import { AuditAdapter, AuditEvent, AuditEntry } from './types';
+import { extractPack } from './audit-event';
 
 /**
  * HTTP implementation of AuditAdapter
