@@ -167,6 +167,7 @@ Recommended migration path:
 3. Use SDK helpers to bridge the two shapes:
    - `fromBindings(bindings, packs)` to expose a public config from a legacy bindings file
    - `toBindings(config)` to feed the current kernel router from the public config
+   - `translateConfig(config, opts)` to emit the legacy bindings, env variable map, and product registration metadata from one public config
 4. Migrate public docs and app code first; migrate installer/runtime internals later.
 
 Non-goal for this phase:

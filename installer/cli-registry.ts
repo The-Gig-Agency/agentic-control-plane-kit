@@ -12,6 +12,9 @@ import {
   createLinkWorkflowPlan,
   createLoginWorkflowPlan,
   createProtectWorkflowPlan,
+  runEnvironmentWorkflow,
+  runLinkWorkflow,
+  runLoginWorkflow,
 } from './workflows/index.js';
 import type { Environment, InstallOptions } from './cli-types.js';
 import type { Framework } from './detect/index.js';
@@ -90,6 +93,47 @@ function printWorkflow(plan: ProductShellWorkflowPlan & { connector?: string }, 
   console.log('');
 }
 
+function printWorkflowExecution(
+  execution: {
+    plan: ProductShellWorkflowPlan;
+    status: string;
+    summary: string;
+    nextAction: string;
+    stateFile?: string;
+    authUrl?: string;
+    dashboardUrl?: string;
+  },
+  json?: boolean,
+): void {
+  if (json) {
+    const safeExecution = {
+      command: execution.plan.publicCommand,
+      status: execution.status,
+      stateFile: execution.stateFile,
+      dashboardUrl: execution.dashboardUrl,
+      nextAction: execution.nextAction,
+    };
+    console.log(JSON.stringify(safeExecution, null, 2));
+    return;
+  }
+
+  console.log(execution.plan.publicCommand);
+  console.log('');
+  console.log(`Summary: ${execution.plan.summary}`);
+  console.log(`Status: ${execution.status}`);
+  if (execution.stateFile) {
+    console.log(`State: ${execution.stateFile}`);
+  }
+  if (execution.authUrl) {
+    console.log(`Auth URL: ${execution.authUrl}`);
+  }
+  if (execution.dashboardUrl) {
+    console.log(`Dashboard: ${execution.dashboardUrl}`);
+  }
+  console.log(`Next: ${execution.nextAction}`);
+  console.log('');
+}
+
 export function registerEchelonCommands(program: Command, handlers: EchelonCommandHandlers): void {
   program
     .command('verbs')
@@ -131,8 +175,22 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public operator login (product-shell workflow)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--user-id <userId>', 'Local operator identifier to persist in the session state')
+    .option('--plan', 'Show the workflow plan without executing local orchestration')
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { env: string; framework: string; json?: boolean }) => {
+    .action(async (opts: { env: string; framework: string; userId?: string; plan?: boolean; json?: boolean }) => {
+      if (!opts.plan) {
+        const execution = await runLoginWorkflow({
+          cwd: process.cwd(),
+          env: opts.env as Environment,
+          framework: parseFrameworkOption(opts.framework),
+        }, {
+          userId: opts.userId,
+        });
+        printWorkflowExecution(execution, opts.json);
+        return;
+      }
+
       const plan = await createLoginWorkflowPlan({
         cwd: process.cwd(),
         env: opts.env as Environment,
@@ -146,9 +204,46 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public link workflow (associate local app with a hosted project)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--plan', 'Show the workflow plan without executing local orchestration')
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { env: string; framework: string; json?: boolean }) => {
+    .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
+      if (!opts.plan) {
+        const execution = await runLinkWorkflow({
+          cwd: process.cwd(),
+          env: opts.env as Environment,
+          framework: parseFrameworkOption(opts.framework),
+        });
+        printWorkflowExecution(execution, opts.json);
+        return;
+      }
+
       const plan = await createLinkWorkflowPlan({
+        cwd: process.cwd(),
+        env: opts.env as Environment,
+        framework: parseFrameworkOption(opts.framework),
+      });
+      printWorkflow(plan, opts.json);
+    });
+
+  program
+    .command('env')
+    .description('Select or create the active product environment for the linked project')
+    .option('--env <env>', 'Environment (development|staging|production)', 'development')
+    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--plan', 'Show the workflow plan without executing local orchestration')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
+      if (!opts.plan) {
+        const execution = await runEnvironmentWorkflow({
+          cwd: process.cwd(),
+          env: opts.env as Environment,
+          framework: parseFrameworkOption(opts.framework),
+        });
+        printWorkflowExecution(execution, opts.json);
+        return;
+      }
+
+      const plan = await createEnvironmentWorkflowPlan({
         cwd: process.cwd(),
         env: opts.env as Environment,
         framework: parseFrameworkOption(opts.framework),

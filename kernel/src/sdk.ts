@@ -43,12 +43,122 @@ export function defineConfig(config: EchelonConfig): EchelonConfig {
   return config;
 }
 
+export type EchelonEnvironment = 'development' | 'staging' | 'production';
+
 export interface ToBindingsOptions {
   /**
    * Override the integration identifier used by the legacy kernel bindings.
    * Existing adopters often already have a stable integration string that should win.
    */
   integration?: string;
+}
+
+export interface TranslationOptions extends ToBindingsOptions {
+  kernelId?: string;
+  env?: EchelonEnvironment;
+  basePath?: string;
+  endpointPath?: string;
+  dashboardBaseUrl?: string;
+  registrationBaseUrl?: string;
+}
+
+export interface RuntimeRegistrationPlan {
+  integration: string;
+  kernelId: string;
+  env: EchelonEnvironment;
+  packs: string[];
+  dashboardUrl?: string;
+  registrationUrl?: string;
+}
+
+export interface ConfigTranslationArtifacts {
+  bindings: Bindings;
+  bindingsJson: string;
+  env: Record<string, string>;
+  registration: RuntimeRegistrationPlan;
+}
+
+export class ConfigTranslationError extends Error {
+  issues: string[];
+
+  constructor(issues: string[]) {
+    super(`Invalid Echelon config:\n- ${issues.join('\n- ')}`);
+    this.name = 'ConfigTranslationError';
+    this.issues = issues;
+  }
+}
+
+function validateConfigForTranslation(config: EchelonConfig): void {
+  const issues: string[] = [];
+  const bindings = config.bindings;
+
+  if (!bindings.tenant?.table?.trim()) issues.push('bindings.tenant.table is required');
+  if (!bindings.tenant?.id_column?.trim()) issues.push('bindings.tenant.id_column is required');
+  if (!bindings.tenant?.get_tenant_fn?.trim()) issues.push('bindings.tenant.get_tenant_fn is required');
+  if (!bindings.tenant?.is_admin_fn?.trim()) issues.push('bindings.tenant.is_admin_fn is required');
+  if (!bindings.auth?.keys_table?.trim()) issues.push('bindings.auth.keys_table is required');
+  if (!bindings.auth?.key_prefix?.trim()) issues.push('bindings.auth.key_prefix is required');
+  if (!Number.isInteger(bindings.auth?.prefix_length) || (bindings.auth?.prefix_length ?? 0) < 1) {
+    issues.push('bindings.auth.prefix_length must be a positive integer');
+  }
+  if (!bindings.auth?.key_hash_column?.trim()) issues.push('bindings.auth.key_hash_column is required');
+  if (!bindings.auth?.key_prefix_column?.trim()) issues.push('bindings.auth.key_prefix_column is required');
+  if (!bindings.auth?.scopes_column?.trim()) issues.push('bindings.auth.scopes_column is required');
+  if (!bindings.database?.adapter?.trim()) issues.push('bindings.database.adapter is required');
+
+  if (issues.length > 0) {
+    throw new ConfigTranslationError(issues);
+  }
+}
+
+function slugifyIntegration(value: string): string {
+  let result = '';
+  let previousWasDash = false;
+
+  for (const char of value.toLowerCase()) {
+    const isAlphaNumeric = (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9');
+    if (isAlphaNumeric) {
+      result += char;
+      previousWasDash = false;
+      continue;
+    }
+
+    if (!previousWasDash && result.length > 0) {
+      result += '-';
+      previousWasDash = true;
+    }
+  }
+
+  if (result.endsWith('-')) {
+    result = result.slice(0, -1);
+  }
+
+  return result || 'echelon-integration';
+}
+
+function buildKernelId(integration: string, env: EchelonEnvironment): string {
+  return `${slugifyIntegration(integration)}-${env}`;
+}
+
+function joinUrl(baseUrl: string | undefined, ...segments: string[]): string | undefined {
+  if (!baseUrl) return undefined;
+
+  const trimSlashes = (input: string): string => {
+    let start = 0;
+    let end = input.length;
+
+    while (start < end && input[start] === '/') {
+      start += 1;
+    }
+    while (end > start && input[end - 1] === '/') {
+      end -= 1;
+    }
+
+    return input.slice(start, end);
+  };
+
+  const trimmed = trimSlashes(baseUrl);
+  return [trimmed, ...segments.map((segment) => trimSlashes(segment))].join('/');
 }
 
 /**
@@ -59,6 +169,7 @@ export interface ToBindingsOptions {
  * kernel router, installer, or runtime contract.
  */
 export function toBindings(config: EchelonConfig, opts?: ToBindingsOptions): Bindings {
+  validateConfigForTranslation(config);
   return {
     ...(config.bindings as Omit<Bindings, 'integration'>),
     integration:
@@ -66,6 +177,43 @@ export function toBindings(config: EchelonConfig, opts?: ToBindingsOptions): Bin
       config.bindings.integration ??
       // Safe fallback; production adopters should set this explicitly.
       'echelon-integration',
+  };
+}
+
+export function translateConfig(config: EchelonConfig, opts: TranslationOptions = {}): ConfigTranslationArtifacts {
+  const bindings = toBindings(config, opts);
+  const env = opts.env || 'development';
+  const kernelId = opts.kernelId || buildKernelId(bindings.integration, env);
+  const basePath = opts.basePath || '/api/manage';
+  const endpointPath = opts.endpointPath || basePath;
+  const packNames = config.packs.map((pack) => pack.name);
+  const dashboardUrl = joinUrl(opts.dashboardBaseUrl, 'projects', bindings.integration, env);
+  const registrationUrl = joinUrl(opts.registrationBaseUrl ?? opts.dashboardBaseUrl, 'onboard', bindings.integration);
+
+  const envMap: Record<string, string> = {
+    ACP_KERNEL_ID: kernelId,
+    ACP_INTEGRATION: bindings.integration,
+    ACP_DATABASE_ADAPTER: bindings.database.adapter,
+    ACP_TENANT_TABLE: bindings.tenant.table,
+    ACP_API_KEYS_TABLE: bindings.auth.keys_table,
+    ACP_KEY_PREFIX: bindings.auth.key_prefix,
+    ACP_BASE_PATH: basePath,
+    ACP_ENDPOINT_PATH: endpointPath,
+    ECHELON_ENV: env,
+  };
+
+  return {
+    bindings,
+    bindingsJson: JSON.stringify(bindings, null, 2),
+    env: envMap,
+    registration: {
+      integration: bindings.integration,
+      kernelId,
+      env,
+      packs: packNames,
+      dashboardUrl,
+      registrationUrl,
+    },
   };
 }
 

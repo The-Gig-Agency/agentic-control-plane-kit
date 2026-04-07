@@ -32,6 +32,7 @@ npx --package agentic-control-plane-kit echelon init
 # Public workflow verbs
 npx --package agentic-control-plane-kit echelon login
 npx --package agentic-control-plane-kit echelon link
+npx --package agentic-control-plane-kit echelon env --env staging
 npx --package agentic-control-plane-kit echelon protect shopify
 npx --package agentic-control-plane-kit echelon audit
 ```
@@ -39,7 +40,8 @@ npx --package agentic-control-plane-kit echelon audit
 The public CLI will:
 - auto-detect your framework
 - scaffold/init ACP kernel artifacts through a product-facing workflow
-- expose guided next steps for link, protect, and audit
+- persist local `.echelon/*.json` metadata-only state for login/link/environment workflows (never secrets or tokens)
+- expose guided next steps for link, env, protect, and audit
 - avoid surfacing raw governance or executor wiring in the normal path
 
 Legacy note:
@@ -72,6 +74,7 @@ For most teams, `npx --package agentic-control-plane-kit echelon install` is the
 For product code (and agents), prefer the stable SDK facade from `agentic-control-plane-kit`:
 
 - `defineConfig()` (your `echelon.config.ts` public shape)
+- `translateConfig()` (emit legacy bindings + env + registration metadata from public config)
 - `protect()` (build a kernel-backed `/manage` router from that config)
 - `middleware()` (thin wrapper for Fetch-style runtimes)
 - `createClient()` (call `/manage` actions from a client)
@@ -112,7 +115,7 @@ const res = await client.call('meta.actions');
 
 Public config: [docs/Echelon-CONFIG-SCHEMA.md](./docs/Echelon-CONFIG-SCHEMA.md).  
 Bindings → config migration: [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md).  
-Compatibility bridge helpers: `toBindings()` and `fromBindings()` on the public SDK surface.
+Compatibility bridge helpers: `toBindings()`, `fromBindings()`, and `translateConfig()` on the public SDK surface.
 
 > Legacy note: the sections below document the kernel-first embedding flow.
 > For product/agent code, prefer the stable “Public SDK Surface” above (`defineConfig`/`protect`/`createClient`).
