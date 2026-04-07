@@ -39,7 +39,7 @@ export interface EchelonVerbMeta {
 export const ECHELON_PUBLIC_VERBS: readonly EchelonVerbMeta[] = [
   { name: 'login', summary: 'Public operator login (product-shell workflow)', category: 'public', implementation: 'workflow_plan' },
   { name: 'link', summary: 'Associate local app with a hosted project', category: 'public', implementation: 'workflow_plan' },
-  { name: 'init', summary: 'Scaffold with readiness gates', category: 'public', implementation: 'workflow_plan' },
+  { name: 'init', summary: 'Scaffold with readiness gates', category: 'public', implementation: 'full' },
   { name: 'protect', summary: 'Verify readiness + prepare safe execution', category: 'public', implementation: 'workflow_plan' },
   { name: 'dev', summary: 'Convenience: target development environment', category: 'public', implementation: 'workflow_plan' },
   { name: 'deploy', summary: 'Convenience: target production protect workflow', category: 'public', implementation: 'workflow_plan' },
@@ -256,14 +256,37 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public init workflow (scaffold with readiness gates)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--plan', 'Show the workflow plan without writing files')
+    .option('--dry-run', 'Show what would be generated (no writes)')
+    .option('--register', 'Attempt hosted registration (advanced)', false)
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { env: string; framework: string; json?: boolean }) => {
-      const plan = await createInitWorkflowPlan({
-        cwd: process.cwd(),
+    .action(async (opts: { env: string; framework: string; plan?: boolean; dryRun?: boolean; register?: boolean; json?: boolean }) => {
+      if (opts.plan) {
+        const plan = await createInitWorkflowPlan({
+          cwd: process.cwd(),
+          env: opts.env as Environment,
+          framework: parseFrameworkOption(opts.framework),
+        });
+        printWorkflow(plan, opts.json);
+        return;
+      }
+
+      // TGA-180: init must perform real scaffold/install work (not plan-only).
+      // We reuse the legacy installer implementation to avoid duplicating generators.
+      const options: InstallOptions = {
+        framework: (opts.framework as InstallOptions['framework']) ?? 'auto',
         env: opts.env as Environment,
-        framework: parseFrameworkOption(opts.framework),
-      });
-      printWorkflow(plan, opts.json);
+        dryRun: opts.dryRun,
+        // Public path defaults to local scaffolding; hosted registration is opt-in.
+        skipRegistration: !opts.register,
+      };
+
+      try {
+        await handlers.install(options);
+      } catch (error) {
+        console.error('❌ Init failed:', error);
+        process.exit(1);
+      }
     });
 
   program
