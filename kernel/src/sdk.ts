@@ -112,10 +112,28 @@ function validateConfigForTranslation(config: EchelonConfig): void {
 }
 
 function slugifyIntegration(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'echelon-integration';
+  let result = '';
+  let previousWasDash = false;
+
+  for (const char of value.toLowerCase()) {
+    const isAlphaNumeric = (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9');
+    if (isAlphaNumeric) {
+      result += char;
+      previousWasDash = false;
+      continue;
+    }
+
+    if (!previousWasDash && result.length > 0) {
+      result += '-';
+      previousWasDash = true;
+    }
+  }
+
+  if (result.endsWith('-')) {
+    result = result.slice(0, -1);
+  }
+
+  return result || 'echelon-integration';
 }
 
 function buildKernelId(integration: string, env: EchelonEnvironment): string {
@@ -124,8 +142,23 @@ function buildKernelId(integration: string, env: EchelonEnvironment): string {
 
 function joinUrl(baseUrl: string | undefined, ...segments: string[]): string | undefined {
   if (!baseUrl) return undefined;
-  const trimmed = baseUrl.replace(/\/+$/, '');
-  return [trimmed, ...segments.map((segment) => segment.replace(/^\/+|\/+$/g, ''))].join('/');
+
+  const trimSlashes = (input: string): string => {
+    let start = 0;
+    let end = input.length;
+
+    while (start < end && input[start] === '/') {
+      start += 1;
+    }
+    while (end > start && input[end - 1] === '/') {
+      end -= 1;
+    }
+
+    return input.slice(start, end);
+  };
+
+  const trimmed = trimSlashes(baseUrl);
+  return [trimmed, ...segments.map((segment) => trimSlashes(segment))].join('/');
 }
 
 /**

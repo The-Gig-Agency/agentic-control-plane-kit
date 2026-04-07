@@ -106,13 +106,20 @@ function printWorkflowExecution(
   json?: boolean,
 ): void {
   if (json) {
-    console.log(JSON.stringify(execution, null, 2));
+    const safeExecution = {
+      command: execution.plan.publicCommand,
+      status: execution.status,
+      stateFile: execution.stateFile,
+      dashboardUrl: execution.dashboardUrl,
+      nextAction: execution.nextAction,
+    };
+    console.log(JSON.stringify(safeExecution, null, 2));
     return;
   }
 
   console.log(execution.plan.publicCommand);
   console.log('');
-  console.log(`Summary: ${execution.summary}`);
+  console.log(`Summary: ${execution.plan.summary}`);
   console.log(`Status: ${execution.status}`);
   if (execution.stateFile) {
     console.log(`State: ${execution.stateFile}`);
