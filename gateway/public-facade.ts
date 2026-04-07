@@ -155,3 +155,7 @@ export function buildPublicExecuteBlockedResponse(input: {
 export function buildEmptyAuditResponse(): PublicAuditResponse {
   return { entries: [] };
 }
+
+export function buildPublicErrorResponse(code: string, message: string): { error: string; message: string } {
+  return { error: code, message };
+}
