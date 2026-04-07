@@ -468,11 +468,26 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
     if (path === '/audit' && req.method === 'GET') {
       const url = new URL(req.url);
       const project = url.searchParams.get('project')?.trim() || '';
-      const env = (url.searchParams.get('env')?.trim() || 'production') as 'development' | 'staging' | 'production';
+      const envRaw = url.searchParams.get('env')?.trim() || 'production';
+      const env = (() => {
+        if (envRaw === 'development' || envRaw === 'staging' || envRaw === 'production') {
+          return envRaw;
+        }
+        return null;
+      })();
 
       if (!project) {
         return new Response(JSON.stringify({
           error: 'project query param required',
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!env) {
+        return new Response(JSON.stringify({
+          error: 'env must be one of: development, staging, production',
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -512,13 +527,24 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
         const payload = await resp.json().catch(() => ({}));
         const rows = (payload?.data?.rows || payload?.rows || payload?.data || []) as Array<Record<string, unknown>>;
 
-        return new Response(JSON.stringify(buildPublicAuditResponseFromRows({
-          project,
-          env,
-          rows,
-        })), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        try {
+          return new Response(JSON.stringify(buildPublicAuditResponseFromRows({
+            project,
+            env,
+            rows,
+          })), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          return new Response(JSON.stringify(buildPublicErrorResponse(
+            'audit_contract_mismatch',
+            `Audit backend returned rows that do not match the public facade contract. ${message}`,
+          )), {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return new Response(JSON.stringify(buildPublicErrorResponse(

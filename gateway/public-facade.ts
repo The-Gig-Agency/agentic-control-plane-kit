@@ -161,25 +161,66 @@ export function buildPublicErrorResponse(code: string, message: string): { error
   return { error: code, message };
 }
 
+function requireStringField(
+  row: Record<string, unknown>,
+  keys: string[],
+  label: string,
+): string {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  throw new Error(`Audit row missing required ${label} field (${keys.join(' | ')})`);
+}
+
+function requireEnumField<T extends string>(
+  row: Record<string, unknown>,
+  keys: string[],
+  allowed: readonly T[],
+  label: string,
+): T {
+  const raw = requireStringField(row, keys, label);
+  if ((allowed as readonly string[]).includes(raw)) {
+    return raw as T;
+  }
+  throw new Error(`Audit row has invalid ${label} value "${raw}"`);
+}
+
 export function buildPublicAuditResponseFromRows(input: {
   project: string;
   env: 'development' | 'staging' | 'production';
   rows: Array<Record<string, unknown>>;
 }): PublicAuditResponse {
   const entries: PublicAuditEntry[] = (input.rows || []).map((row) => {
-    const createdAt = String(row.created_at || row.ts || new Date().toISOString());
-    const action = String(row.action || row.tool || 'unknown');
-    const connector = action.includes('.') ? action.split('.')[0] : 'unknown';
+    const auditId = requireStringField(row, ['audit_id', 'event_id', 'decision_id'], 'audit_id');
+    const action = requireStringField(row, ['action', 'tool'], 'action');
+    const createdAt = requireStringField(row, ['created_at', 'ts'], 'created_at');
+    const actorId = requireStringField(row, ['actor_id', 'api_key_id'], 'actor_id');
+
+    if (!action.includes('.')) {
+      throw new Error(`Audit row action must be namespaced (expected "connector.action", got "${action}")`);
+    }
+    const connector = action.split('.')[0];
+
+    const decision = requireEnumField(row, ['decision'], ['allow', 'deny', 'require_approval'] as const, 'decision');
+    const executionStatus = requireEnumField(
+      row,
+      ['execution_status'],
+      ['blocked', 'pending_approval', 'running', 'completed', 'failed'] as const,
+      'execution_status',
+    );
 
     return {
-      audit_id: String(row.audit_id || row.event_id || row.decision_id || 'unknown'),
+      audit_id: auditId,
       project: input.project,
       env: input.env,
       connector,
       action,
-      actor_id: String(row.actor_id || row.actor?.id || row.api_key_id || 'unknown'),
-      decision: (row.decision || row.status || 'deny') as any,
-      execution_status: (row.execution_status || 'completed') as any,
+      actor_id: actorId,
+      decision,
+      execution_status: executionStatus,
       created_at: createdAt,
     };
   });

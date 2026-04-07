@@ -27,3 +27,24 @@ Deno.test('buildPublicAuditResponseFromRows maps basic fields', () => {
   assertEquals(resp.entries[0].created_at, '2026-04-07T00:00:00.000Z');
 });
 
+Deno.test('buildPublicAuditResponseFromRows throws on missing required fields', () => {
+  let threw = false;
+  try {
+    buildPublicAuditResponseFromRows({
+      project: 'my-app',
+      env: 'production',
+      rows: [
+        {
+          // missing audit_id, actor_id, decision, execution_status
+          created_at: '2026-04-07T00:00:00.000Z',
+          action: 'shopify.products.update',
+        },
+      ],
+    });
+  } catch {
+    threw = true;
+  }
+
+  assertEquals(threw, true);
+});
+
