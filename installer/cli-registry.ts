@@ -16,6 +16,7 @@ import {
   runLinkWorkflow,
   runLoginWorkflow,
 } from './workflows/index.js';
+import { doctor } from './doctor.js';
 import type { Environment, InstallOptions } from './cli-types.js';
 import type { Framework } from './detect/index.js';
 import type { ProductShellWorkflowPlan } from './workflows/index.js';
@@ -40,9 +41,9 @@ export const ECHELON_PUBLIC_VERBS: readonly EchelonVerbMeta[] = [
   { name: 'login', summary: 'Public operator login (hosted orchestration)', category: 'public', implementation: 'placeholder' },
   { name: 'link', summary: 'Associate local app with a hosted project (hosted orchestration)', category: 'public', implementation: 'placeholder' },
   { name: 'init', summary: 'Scaffold with readiness gates', category: 'public', implementation: 'full' },
-  { name: 'protect', summary: 'Verify readiness + prepare safe execution', category: 'public', implementation: 'workflow_plan' },
+  { name: 'protect', summary: 'Verify readiness + prepare safe execution', category: 'public', implementation: 'full' },
   { name: 'dev', summary: 'Convenience: target development environment', category: 'public', implementation: 'workflow_plan' },
-  { name: 'deploy', summary: 'Convenience: target production protect workflow', category: 'public', implementation: 'workflow_plan' },
+  { name: 'deploy', summary: 'Deploy (alias for production protect workflow)', category: 'public', implementation: 'full' },
   { name: 'audit', summary: 'Readiness / diagnostics for the public surface', category: 'public', implementation: 'full' },
   { name: 'approve', summary: 'Finalize approvals (product-shell placeholder)', category: 'public', implementation: 'placeholder' },
 ] as const;
@@ -131,6 +132,54 @@ function printWorkflowExecution(
     console.log(`Dashboard: ${execution.dashboardUrl}`);
   }
   console.log(`Next: ${execution.nextAction}`);
+  console.log('');
+}
+
+async function runProtectReadiness(input: {
+  connector: string;
+  probe?: boolean;
+  json?: boolean;
+}): Promise<void> {
+  // TGA-183: protect must perform real readiness checks (no plan-only success).
+  const result = await doctor({ json: false, probe: input.probe });
+
+  const ok =
+    result.acp_kernel === 'installed' &&
+    result.bindings === 'valid' &&
+    result.manifest_present;
+
+  if (input.json) {
+    console.log(
+      JSON.stringify(
+        {
+          command: 'echelon protect',
+          connector: input.connector,
+          status: ok ? 'ready' : 'blocked',
+          doctor: result,
+          nextAction: ok
+            ? 'Run your app and call `/manage meta.actions` to confirm the kernel is serving actions for the enabled packs.'
+            : result.hint ?? 'Run `echelon init` first, then retry `echelon protect`.',
+        },
+        null,
+        2,
+      ),
+    );
+    if (!ok) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  console.log(`Protect target: ${input.connector}`);
+  console.log(`Protect status: ${ok ? 'Ready ✓' : 'Blocked ✗'}`);
+  if (!ok) {
+    console.log(result.hint ?? 'Next: run `echelon init`, then retry.');
+    console.log('');
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log('Next: run your app and verify `/manage meta.actions` includes your packs.');
   console.log('');
 }
 
@@ -294,15 +343,26 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public protect workflow (verify readiness + prepare safe execution)')
     .option('--env <env>', 'Environment (development|staging|production)', 'production')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option('--plan', 'Show the workflow plan without executing readiness checks')
     .option('--json', 'Output machine-readable JSON')
-    .action(async (connector: string, opts: { env: string; framework: string; json?: boolean }) => {
-      const plan = await createProtectWorkflowPlan({
-        cwd: process.cwd(),
-        env: opts.env as Environment,
-        framework: parseFrameworkOption(opts.framework),
+    .option('--probe', 'Probe Governance Hub connectivity', false)
+    .action(async (connector: string, opts: { env: string; framework: string; plan?: boolean; json?: boolean; probe?: boolean }) => {
+      if (opts.plan) {
+        const plan = await createProtectWorkflowPlan({
+          cwd: process.cwd(),
+          env: opts.env as Environment,
+          framework: parseFrameworkOption(opts.framework),
+        });
+        const planWithConnector = { ...plan, connector };
+        printWorkflow(planWithConnector, opts.json);
+        return;
+      }
+
+      await runProtectReadiness({
+        connector,
+        probe: opts.probe,
+        json: opts.json,
       });
-      const planWithConnector = { ...plan, connector };
-      printWorkflow(planWithConnector, opts.json);
     });
 
   program
@@ -321,16 +381,17 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
 
   program
     .command('deploy')
-    .description('Convenience: target production protect workflow')
+    .description('Deploy (alias for production protect workflow)')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { framework: string; json?: boolean }) => {
-      const plan = await createProtectWorkflowPlan({
-        cwd: process.cwd(),
-        env: 'production',
-        framework: parseFrameworkOption(opts.framework),
+    .option('--probe', 'Probe Governance Hub connectivity', false)
+    .action(async (opts: { framework: string; json?: boolean; probe?: boolean }) => {
+      // TGA-183: deploy must not be plan-only; treat as protect on production.
+      await runProtectReadiness({
+        connector: 'production',
+        probe: opts.probe,
+        json: opts.json,
       });
-      printWorkflow(plan, opts.json);
     });
 
   program
@@ -346,9 +407,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('approve')
     .description('Finalize approvals (operator step; handled by Governance Hub in production)')
     .action(async () => {
-      console.log('approve workflow is currently a product-shell placeholder.');
-      console.log('Next step: use Governance Hub approval UI/API to finalize protected changes.');
-      console.log('');
+      // TGA-183: no placeholder success output; approvals are not implemented here.
+      console.error('approve is not implemented in this repo yet.');
+      console.error('Next: use your governance approval UI/API to finalize protected changes.');
+      console.error('');
+      process.exitCode = 1;
     });
 
   program

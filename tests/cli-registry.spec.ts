@@ -25,6 +25,13 @@ describe('cli-registry', () => {
     expect(init?.implementation).toBe('full');
   });
 
+  it('marks protect and deploy as implemented (not plan-only)', () => {
+    const protect = ECHELON_PUBLIC_VERBS.find((v) => v.name === 'protect');
+    const deploy = ECHELON_PUBLIC_VERBS.find((v) => v.name === 'deploy');
+    expect(protect?.implementation).toBe('full');
+    expect(deploy?.implementation).toBe('full');
+  });
+
   it('includes legacy and meta verbs in full list', () => {
     const all = listAllVerbMeta().map((v) => v.name);
     expect(all).toContain('install');
