@@ -215,11 +215,11 @@ function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductSh
   return {
     workflow: 'login',
     publicCommand: 'echelon login',
-    status: 'ready',
-    summary: 'Authenticate the operator and persist a product-shell session without exposing raw infrastructure details.',
+    status: 'blocked',
+    summary: 'Authenticate the operator via hosted orchestration. This workflow is blocked until the hosted auth handoff is implemented.',
     context,
     requiresInput: ['user credentials or browser auth handoff'],
-    nextAction: 'Implement session persistence and hosted auth handoff for the public CLI.',
+    nextAction: 'Until hosted orchestration exists, use `echelon login --plan` for guidance; do not expect local state to be persisted.',
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -240,7 +240,7 @@ function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductSh
       {
         id: 'persist-session',
         label: 'Persist session',
-        description: 'Store the resulting org and user session locally for follow-on link and protect workflows.',
+        description: 'Persist a metadata-only session locally after a real hosted auth exchange succeeds (no fabricated success state).',
         integrationPoint: 'Future local session store for CLI auth state.',
       },
     ],
@@ -251,11 +251,11 @@ function buildLinkPlan(context: ReturnType<typeof normalizeContext>): ProductShe
   return {
     workflow: 'link',
     publicCommand: 'echelon link',
-    status: 'ready',
-    summary: 'Link the local app to an Echelon project using product nouns instead of Repo B project provisioning details.',
+    status: 'blocked',
+    summary: 'Link the local app to a hosted Echelon project. This workflow is blocked until hosted project resolution exists.',
     context,
     requiresInput: ['target Echelon project selection'],
-    nextAction: 'Implement project lookup, project creation, and dashboard URL resolution behind the public CLI.',
+    nextAction: 'Until hosted orchestration exists, use `echelon link --plan` for guidance; do not expect a local project link to be created.',
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -277,7 +277,7 @@ function buildLinkPlan(context: ReturnType<typeof normalizeContext>): ProductShe
       {
         id: 'write-local-link',
         label: 'Write local link state',
-        description: 'Persist the linked project reference locally without exposing governance identifiers in user-facing config.',
+        description: 'Persist a metadata-only project mapping locally after real hosted project selection/creation succeeds.',
         integrationPoint: 'Future local project-link manifest.',
       },
       {
@@ -294,11 +294,11 @@ function buildEnvironmentPlan(context: ReturnType<typeof normalizeContext>): Pro
   return {
     workflow: 'environment',
     publicCommand: 'echelon env',
-    status: 'ready',
-    summary: 'Select or create the product environment that downstream protect and deploy workflows should target.',
+    status: 'blocked',
+    summary: 'Select or create the product environment via hosted orchestration. This workflow is blocked until hosted env resolution exists.',
     context,
     requiresInput: ['environment selection or creation intent'],
-    nextAction: 'Implement hosted environment lookup and local environment state persistence for public workflows.',
+    nextAction: 'Until hosted orchestration exists, use `echelon env --plan` for guidance; do not expect a local environment state file.',
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -320,7 +320,7 @@ function buildEnvironmentPlan(context: ReturnType<typeof normalizeContext>): Pro
       {
         id: 'persist-environment',
         label: 'Persist environment state',
-        description: 'Store the chosen environment locally so later commands can reuse it without requiring raw backend identifiers.',
+        description: 'Persist a metadata-only environment selection locally after real hosted resolution succeeds.',
         integrationPoint: 'Future local environment state file.',
       },
     ],
