@@ -20,6 +20,11 @@ describe('cli-registry', () => {
     expect(names).toContain('audit');
   });
 
+  it('marks init as implemented (not plan-only)', () => {
+    const init = ECHELON_PUBLIC_VERBS.find((v) => v.name === 'init');
+    expect(init?.implementation).toBe('full');
+  });
+
   it('includes legacy and meta verbs in full list', () => {
     const all = listAllVerbMeta().map((v) => v.name);
     expect(all).toContain('install');
