@@ -37,8 +37,8 @@ export interface EchelonVerbMeta {
 
 /** Public product-facing verbs (Echelon operator / agent discovery). */
 export const ECHELON_PUBLIC_VERBS: readonly EchelonVerbMeta[] = [
-  { name: 'login', summary: 'Public operator login (product-shell workflow)', category: 'public', implementation: 'workflow_plan' },
-  { name: 'link', summary: 'Associate local app with a hosted project', category: 'public', implementation: 'workflow_plan' },
+  { name: 'login', summary: 'Public operator login (hosted orchestration)', category: 'public', implementation: 'placeholder' },
+  { name: 'link', summary: 'Associate local app with a hosted project (hosted orchestration)', category: 'public', implementation: 'placeholder' },
   { name: 'init', summary: 'Scaffold with readiness gates', category: 'public', implementation: 'full' },
   { name: 'protect', summary: 'Verify readiness + prepare safe execution', category: 'public', implementation: 'workflow_plan' },
   { name: 'dev', summary: 'Convenience: target development environment', category: 'public', implementation: 'workflow_plan' },

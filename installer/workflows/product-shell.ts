@@ -468,28 +468,16 @@ export async function runLoginWorkflow(
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildLoginPlan(detected);
-  const userId = opts.userId || process.env.ECHELON_USER_ID || process.env.USER || 'local-operator';
   const authUrl = buildAuthUrl(detected.projectName, detected.env);
-  const sessionPath = getSessionPath(detected.cwd);
 
-  await ensureStateDir(detected.cwd);
-  await ensureGitignoreContains(detected.cwd);
-  await writeJsonState(sessionPath, {
-    kind: 'session',
-    status: 'authenticated',
-    userId,
-    authUrl,
-    createdAt: new Date().toISOString(),
-  } satisfies ProductShellSessionState);
-
+  // TGA-184: Do not fabricate authenticated/link/environment state locally.
+  // Until hosted orchestration exists, these workflows must clearly block.
   return {
     plan,
-    status: 'ready',
-    summary: `Authenticated local operator session for ${userId}.`,
-    nextAction: `Run \`echelon link\` to attach ${detected.projectName} to a hosted Echelon project.`,
-    stateFile: sessionPath,
+    status: 'blocked',
+    summary: 'Login requires hosted orchestration and is not implemented in this repo yet.',
+    nextAction: 'Use `echelon login --plan` to inspect the workflow; run hosted Echelon orchestration to complete login.',
     authUrl,
-    data: { userId },
   };
 }
 
@@ -498,42 +486,13 @@ export async function runLinkWorkflow(
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildLinkPlan(detected);
-  const session = await readJsonState<ProductShellSessionState>(getSessionPath(detected.cwd));
 
-  if (!session || session.kind !== 'session' || session.status !== 'authenticated') {
-    return {
-      plan,
-      status: 'blocked',
-      summary: 'Link requires an authenticated local Echelon session.',
-      nextAction: 'Run `echelon login` first, then retry `echelon link`.',
-    };
-  }
-
-  const projectSlug = slugifyProjectName(detected.projectName);
-  const projectId = `echelon_${projectSlug}`;
-  const dashboardUrl = buildDashboardUrl(projectSlug, detected.env);
-  const linkPath = getLinkPath(detected.cwd);
-
-  await ensureStateDir(detected.cwd);
-  await ensureGitignoreContains(detected.cwd);
-  await writeJsonState(linkPath, {
-    kind: 'project-link',
-    projectName: detected.projectName,
-    projectSlug,
-    projectId,
-    framework: detected.framework,
-    linkedAt: new Date().toISOString(),
-    dashboardUrl,
-  } satisfies ProductShellLinkState);
-
+  // TGA-184: no fake local link state.
   return {
     plan,
-    status: 'ready',
-    summary: `Linked ${detected.projectName} to hosted project ${projectId}.`,
-    nextAction: `Run \`echelon env --env ${detected.env}\` to persist the active environment, then open ${dashboardUrl}.`,
-    stateFile: linkPath,
-    dashboardUrl,
-    data: { projectId, projectSlug },
+    status: 'blocked',
+    summary: 'Link requires hosted orchestration and is not implemented in this repo yet.',
+    nextAction: 'Use `echelon link --plan` to inspect the workflow; run hosted Echelon orchestration to complete linking.',
   };
 }
 
@@ -542,38 +501,12 @@ export async function runEnvironmentWorkflow(
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildEnvironmentPlan(detected);
-  const link = await readJsonState<ProductShellLinkState>(getLinkPath(detected.cwd));
 
-  if (!link || link.kind !== 'project-link') {
-    return {
-      plan,
-      status: 'blocked',
-      summary: 'Environment selection requires a linked Echelon project.',
-      nextAction: 'Run `echelon link` first to create the local project mapping.',
-    };
-  }
-
-  const dashboardUrl = buildDashboardUrl(link.projectSlug, detected.env);
-  const environmentPath = getEnvironmentPath(detected.cwd);
-
-  await ensureStateDir(detected.cwd);
-  await ensureGitignoreContains(detected.cwd);
-  await writeJsonState(environmentPath, {
-    kind: 'environment',
-    env: detected.env,
-    projectId: link.projectId,
-    projectSlug: link.projectSlug,
-    updatedAt: new Date().toISOString(),
-    dashboardUrl,
-  } satisfies ProductShellEnvironmentState);
-
+  // TGA-184: env selection must come from real hosted environment resolution.
   return {
     plan,
-    status: 'ready',
-    summary: `Selected ${detected.env} as the active Echelon environment for ${link.projectId}.`,
-    nextAction: `Open ${dashboardUrl} or continue with \`echelon protect <connector>\`.`,
-    stateFile: environmentPath,
-    dashboardUrl,
-    data: { env: detected.env, projectId: link.projectId },
+    status: 'blocked',
+    summary: 'Environment selection requires hosted orchestration and is not implemented in this repo yet.',
+    nextAction: 'Use `echelon env --plan` to inspect the workflow; run hosted Echelon orchestration to resolve environments.',
   };
 }
