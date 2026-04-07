@@ -347,7 +347,7 @@ export const handleShopifyProductsUpdate: ActionHandler = async (params, ctx) =>
 
     const impact: ImpactShape = {
       creates: [],
-      updates: [{ type: 'shopify_product', id: params.product_id }],
+      updates: [{ type: 'shopify_product', id: params.product_id, fields: Object.keys(params ?? {}) }],
       deletes: [],
       side_effects: [],
       risk: 'low',

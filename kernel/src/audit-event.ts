@@ -5,9 +5,9 @@
  * Enforces schema, sanitization, and hashing.
  */
 
-import { AuditAdapter, AuditEvent, Bindings } from './types.ts';
-import { sanitize, canonicalJson, redactString } from './sanitize.ts';
-import { hashPayload } from './audit.ts';
+import { AuditAdapter, AuditEvent, Bindings } from './types';
+import { sanitize, canonicalJson, redactString } from './sanitize';
+import { hashPayload } from './audit';
 
 /**
  * Extract pack name from action

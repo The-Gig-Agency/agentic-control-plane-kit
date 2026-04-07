@@ -10,11 +10,11 @@
  * `echelon.config.ts` and translate back to the current kernel shape.
  */
 
-import type { Bindings, ManageRequest, ManageResponse, DbAdapter, AuditAdapter, IdempotencyAdapter, RateLimitAdapter, CeilingsAdapter } from './types.ts';
-import { createManageRouter } from './router.ts';
-import type { ManageRouter } from './router.ts';
-import { iamPack, webhooksPack, settingsPack } from '../../packs/index.ts';
-import type { Pack } from './pack.ts';
+import type { Bindings, ManageRequest, ManageResponse, DbAdapter, AuditAdapter, IdempotencyAdapter, RateLimitAdapter, CeilingsAdapter } from './types';
+import { createManageRouter } from './router';
+import type { ManageRouter } from './router';
+import { iamPack, webhooksPack, settingsPack } from '../../packs/index';
+import type { Pack } from './pack';
 
 export type PublicBindings = Omit<Bindings, 'integration'> & {
   /**

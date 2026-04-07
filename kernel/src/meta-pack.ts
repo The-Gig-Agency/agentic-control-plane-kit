@@ -3,8 +3,8 @@
  * Provides discovery and version actions
  */
 
-import { ActionDef, ActionHandler, ActionContext } from './types.ts';
-import { Pack } from './pack.ts';
+import { ActionDef, ActionHandler, ActionContext } from './types';
+import { Pack } from './pack';
 
 let globalActionRegistry: ActionDef[] = [];
 

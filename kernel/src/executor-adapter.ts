@@ -5,7 +5,7 @@
  * maintaining governance through the kernel.
  */
 
-import { hashPayload } from './audit.ts';
+import { hashPayload } from './audit';
 
 export interface ExecutorResponse<T = any> {
   data: T;
@@ -100,8 +100,8 @@ export class HttpExecutorAdapter implements ExecutorAdapter {
     const action = endpointMatch[2];
 
     // Create request hash (sanitized, canonical JSON)
-    const { sanitize, canonicalJson } = await import('./sanitize.ts');
-    const { hashPayload } = await import('./audit.ts');
+    const { sanitize, canonicalJson } = await import('./sanitize');
+    const { hashPayload } = await import('./audit');
     const sanitizedParams = sanitize(params);
     const canonicalParams = canonicalJson(sanitizedParams);
     const request_hash = await hashPayload(canonicalParams);
@@ -138,18 +138,20 @@ export class HttpExecutorAdapter implements ExecutorAdapter {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error_message_redacted || error.error || `CIA executor failed: ${response.status}`);
+      const error: any = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error?.error_message_redacted || error?.error || `CIA executor failed: ${response.status}`);
     }
 
-    const result = await response.json();
+    const result: any = await response.json();
     
     // Transform CIA response to ExecutorResponse format
     return {
-      data: result.data,
-      resource_ids: result.result_meta?.ids_created || (result.result_meta?.resource_id ? [result.result_meta.resource_id] : undefined),
-      resource_type: result.result_meta?.resource_type,
-      count: result.result_meta?.count,
+      data: result?.data,
+      resource_ids:
+        result?.result_meta?.ids_created ||
+        (result?.result_meta?.resource_id ? [result.result_meta.resource_id] : undefined),
+      resource_type: result?.result_meta?.resource_type,
+      count: result?.result_meta?.count,
     };
   }
 }
@@ -204,23 +206,23 @@ export class CiaExecutorAdapter implements ExecutorAdapter {
       body: JSON.stringify(body),
     });
 
-    const result = await response.json().catch(() => ({}));
+    const result: any = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       const msg = result.error_message_redacted ?? result.error ?? `Executor failed: ${response.status}`;
       throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
 
-    if (result.ok === false) {
-      const msg = result.error_message_redacted ?? result.error ?? 'Execution failed';
+    if (result?.ok === false) {
+      const msg = result?.error_message_redacted ?? result?.error ?? 'Execution failed';
       throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
 
     return {
-      data: result.data ?? result,
-      resource_ids: result.resource_ids,
-      resource_type: result.resource_type,
-      count: result.count,
+      data: result?.data ?? result,
+      resource_ids: result?.resource_ids,
+      resource_type: result?.resource_type,
+      count: result?.count,
     };
   }
 }

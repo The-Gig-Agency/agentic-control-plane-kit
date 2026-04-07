@@ -234,6 +234,10 @@ export interface AuditEvent {
     count?: number;            // For list operations
     ids_created?: string[];    // For create operations
     diff_hash?: string;        // SHA-256 of before/after diff
+    // Optional governance-oriented metadata (pack-specific)
+    proposal_title?: string;
+    proposal_kind?: string;
+    proposal_status?: string;
   };
   run_id?: string;             // UUID for multi-step agent runs
   correlation_id?: string;     // Thread/trace ID across services

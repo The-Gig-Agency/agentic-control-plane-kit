@@ -3,7 +3,7 @@
  * Uses lightweight manual validation (no external deps)
  */
 
-import { ActionDef, ManageRequest } from './types.ts';
+import { ActionDef, ManageRequest } from './types';
 
 export class ValidationError extends Error {
   constructor(message: string, public field?: string) {
