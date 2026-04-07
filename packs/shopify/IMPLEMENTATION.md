@@ -114,7 +114,7 @@ const executor = new HttpExecutorAdapter({
 });
 
 const controlPlane = new HttpControlPlaneAdapter({
-  platformUrl: process.env.GOVERNANCE_HUB_URL,
+  platformUrl: process.env.ACP_BASE_URL || process.env.GOVERNANCE_HUB_URL,
   kernelApiKey: process.env.ACP_KERNEL_KEY,
 });
 

@@ -121,7 +121,7 @@ import { governancePack } from './packs/governance';
 import { HttpControlPlaneAdapter } from './kernel/src/control-plane-adapter';
 
 const controlPlane = new HttpControlPlaneAdapter({
-  platformUrl: process.env.GOVERNANCE_HUB_URL || process.env.ACP_BASE_URL!,
+  platformUrl: process.env.ACP_BASE_URL || process.env.GOVERNANCE_HUB_URL!,
   kernelApiKey: process.env.ACP_KERNEL_KEY!,
 });
 
@@ -135,7 +135,8 @@ const router = createManageRouter({
 ### 2. Environment Variables
 
 ```bash
-GOVERNANCE_HUB_URL=https://your-governance-hub.supabase.co
+ACP_BASE_URL=https://your-governance-hub.supabase.co
+# GOVERNANCE_HUB_URL=https://your-governance-hub.supabase.co  # legacy alias
 ACP_KERNEL_KEY=acp_kernel_xxxxx
 ```
 

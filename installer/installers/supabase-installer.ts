@@ -128,7 +128,8 @@ INTEGRATION=${integration}
 
 ${isDev ? `# Development Mode: Optional connections (safe to skip)
 # Governance Hub (Repo B) - Optional in dev
-# GOVERNANCE_HUB_URL=https://dev-governance-hub.supabase.co
+# ACP_BASE_URL=https://dev-governance-hub.supabase.co
+# GOVERNANCE_HUB_URL=https://dev-governance-hub.supabase.co  # legacy alias
 # ACP_KERNEL_KEY=acp_kernel_dev_xxxxx
 
 # Key Vault Executor (Repo C) - Optional in dev
@@ -136,7 +137,8 @@ ${isDev ? `# Development Mode: Optional connections (safe to skip)
 # CIA_SERVICE_KEY=cia_service_dev_xxxxx
 # CIA_ANON_KEY=eyJ...
 ` : `# Governance Hub (Repo B)
-GOVERNANCE_HUB_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}
+ACP_BASE_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}
+# GOVERNANCE_HUB_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}  # legacy alias
 ACP_KERNEL_KEY=${options.kernelApiKey || 'acp_kernel_xxxxx'}
 
 # Key Vault Executor (Repo C)

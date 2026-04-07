@@ -173,7 +173,7 @@ npx echelon install --governance-hub-url https://prod-hub.supabase.co
 ```bash
 # BAD: Blocks dev install
 npx echelon install
-# Error: GOVERNANCE_HUB_URL required
+# Error: ACP_BASE_URL required (legacy: GOVERNANCE_HUB_URL)
 ```
 
 ### ❌ Don't Require Secrets Setup
