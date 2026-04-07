@@ -77,7 +77,7 @@ export async function status(): Promise<void> {
     const filePath = path.join(cwd, envFile);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, 'utf-8');
-      if (content.includes('GOVERNANCE_HUB_URL') && content.includes('ACP_KERNEL_KEY')) {
+      if ((content.includes('ACP_BASE_URL') || content.includes('GOVERNANCE_HUB_URL')) && content.includes('ACP_KERNEL_KEY')) {
         repoBConnected = true;
       }
       if (content.includes('CIA_URL') && content.includes('CIA_SERVICE_KEY')) {

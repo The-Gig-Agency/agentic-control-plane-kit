@@ -162,12 +162,12 @@ function checkGovernanceHubEnv(cwd: string): boolean {
   for (const file of envFiles) {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf-8');
-      if (content.includes('GOVERNANCE_HUB_URL') && content.includes('ACP_KERNEL_KEY')) {
+      if ((content.includes('ACP_BASE_URL') || content.includes('GOVERNANCE_HUB_URL')) && content.includes('ACP_KERNEL_KEY')) {
         return true;
       }
     }
   }
-  return !!(process.env.GOVERNANCE_HUB_URL && process.env.ACP_KERNEL_KEY);
+  return !!((process.env.ACP_BASE_URL || process.env.GOVERNANCE_HUB_URL) && process.env.ACP_KERNEL_KEY);
 }
 
 function getGovernanceHubUrl(cwd: string): string | null {
@@ -178,14 +178,14 @@ function getGovernanceHubUrl(cwd: string): string | null {
   for (const file of envFiles) {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf-8');
-      const m = content.match(/GOVERNANCE_HUB_URL=(.+)/m);
+      const m = content.match(/ACP_BASE_URL=(.+)/m) || content.match(/GOVERNANCE_HUB_URL=(.+)/m);
       if (m) {
         const url = m[1].trim().replace(/^["']|["']$/g, '');
         if (url && !url.startsWith('#')) return url;
       }
     }
   }
-  return process.env.GOVERNANCE_HUB_URL || null;
+  return process.env.ACP_BASE_URL || process.env.GOVERNANCE_HUB_URL || null;
 }
 
 async function probeGovernanceHub(cwd: string): Promise<'ok' | 'fail' | 'skipped'> {
