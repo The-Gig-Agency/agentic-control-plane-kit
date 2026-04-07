@@ -1,6 +1,15 @@
 import { detectFramework, type Framework } from '../detect/index.js';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  HostedOrchestrationError,
+  getHostedOrchestrationHint,
+  hostedLinkProject,
+  hostedLoginPoll,
+  hostedLoginStart,
+  hostedSelectEnvironment,
+  isHostedOrchestrationConfigured,
+} from './hosted-orchestration.js';
 
 export type ProductShellWorkflowName = 'login' | 'link' | 'environment' | 'init' | 'protect';
 export type ProductShellWorkflowStatus = 'pending' | 'ready' | 'blocked';
@@ -212,14 +221,19 @@ async function readJsonState<T>(filePath: string): Promise<T | null> {
 }
 
 function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductShellWorkflowPlan {
+  const hostedConfigured = isHostedOrchestrationConfigured();
   return {
     workflow: 'login',
     publicCommand: 'echelon login',
-    status: 'blocked',
-    summary: 'Authenticate the operator via hosted orchestration. This workflow is blocked until the hosted auth handoff is implemented.',
+    status: hostedConfigured ? 'ready' : 'blocked',
+    summary: hostedConfigured
+      ? 'Authenticate the operator via hosted orchestration.'
+      : 'Authenticate the operator via hosted orchestration. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['user credentials or browser auth handoff'],
-    nextAction: 'Until hosted orchestration exists, use `echelon login --plan` for guidance; do not expect local state to be persisted.',
+    nextAction: hostedConfigured
+      ? 'Run `echelon login` to start the hosted auth handoff.'
+      : getHostedOrchestrationHint(),
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -248,14 +262,19 @@ function buildLoginPlan(context: ReturnType<typeof normalizeContext>): ProductSh
 }
 
 function buildLinkPlan(context: ReturnType<typeof normalizeContext>): ProductShellWorkflowPlan {
+  const hostedConfigured = isHostedOrchestrationConfigured();
   return {
     workflow: 'link',
     publicCommand: 'echelon link',
-    status: 'blocked',
-    summary: 'Link the local app to a hosted Echelon project. This workflow is blocked until hosted project resolution exists.',
+    status: hostedConfigured ? 'ready' : 'blocked',
+    summary: hostedConfigured
+      ? 'Link the local app to a hosted Echelon project.'
+      : 'Link the local app to a hosted Echelon project. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['target Echelon project selection'],
-    nextAction: 'Until hosted orchestration exists, use `echelon link --plan` for guidance; do not expect a local project link to be created.',
+    nextAction: hostedConfigured
+      ? 'Run `echelon link` after a successful `echelon login`.'
+      : getHostedOrchestrationHint(),
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -291,14 +310,19 @@ function buildLinkPlan(context: ReturnType<typeof normalizeContext>): ProductShe
 }
 
 function buildEnvironmentPlan(context: ReturnType<typeof normalizeContext>): ProductShellWorkflowPlan {
+  const hostedConfigured = isHostedOrchestrationConfigured();
   return {
     workflow: 'environment',
     publicCommand: 'echelon env',
-    status: 'blocked',
-    summary: 'Select or create the product environment via hosted orchestration. This workflow is blocked until hosted env resolution exists.',
+    status: hostedConfigured ? 'ready' : 'blocked',
+    summary: hostedConfigured
+      ? 'Select or create the product environment via hosted orchestration.'
+      : 'Select or create the product environment via hosted orchestration. This workflow is blocked until hosted orchestration is configured.',
     context,
     requiresInput: ['environment selection or creation intent'],
-    nextAction: 'Until hosted orchestration exists, use `echelon env --plan` for guidance; do not expect a local environment state file.',
+    nextAction: hostedConfigured
+      ? 'Run `echelon env` after a successful `echelon link`.'
+      : getHostedOrchestrationHint(),
     output: {
       projectName: context.projectName,
       framework: context.framework,
@@ -464,20 +488,90 @@ export async function createProductShellWorkflowScaffold(
 
 export async function runLoginWorkflow(
   context: ProductShellContext = {},
-  opts: { userId?: string } = {},
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildLoginPlan(detected);
-  const authUrl = buildAuthUrl(detected.projectName, detected.env);
+  if (!isHostedOrchestrationConfigured()) {
+    const authUrl = buildAuthUrl(detected.projectName, detected.env);
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Login requires hosted orchestration.',
+      nextAction: getHostedOrchestrationHint(),
+      authUrl,
+    };
+  }
 
-  // TGA-184: Do not fabricate authenticated/link/environment state locally.
-  // Until hosted orchestration exists, these workflows must clearly block.
+  const sessionPath = getSessionPath(detected.cwd);
+  const start = await hostedLoginStart({
+    project_name: detected.projectName,
+    env: detected.env,
+    framework: detected.framework,
+  });
+
+  // Poll for completion. We do NOT persist any token/poll identifier.
+  const timeoutMs = Number(process.env.ECHELON_LOGIN_TIMEOUT_MS || 120_000);
+  const intervalMs = Number(process.env.ECHELON_LOGIN_POLL_MS || 2_000);
+  const startAt = Date.now();
+  let userId: string | undefined;
+
+  for (;;) {
+    if (Date.now() - startAt > timeoutMs) {
+      return {
+        plan,
+        status: 'blocked',
+        summary: 'Timed out waiting for hosted login to complete.',
+        nextAction: 'Complete the browser auth step and re-run `echelon login`.',
+        authUrl: start.auth_url,
+      };
+    }
+
+    const poll = await hostedLoginPoll({ poll_id: start.poll_id });
+    if (poll.status === 'pending') {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      continue;
+    }
+    if (poll.status === 'failed') {
+      return {
+        plan,
+        status: 'blocked',
+        summary: 'Hosted login failed.',
+        nextAction: poll.error ? `Resolve: ${poll.error}` : 'Retry `echelon login`.',
+        authUrl: start.auth_url,
+      };
+    }
+    userId = poll.user_id;
+    break;
+  }
+
+  if (!userId) {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Hosted login did not return a user id.',
+      nextAction: 'Retry `echelon login` or contact support.',
+      authUrl: start.auth_url,
+    };
+  }
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(sessionPath, {
+    kind: 'session',
+    status: 'authenticated',
+    userId,
+    authUrl: start.auth_url,
+    createdAt: new Date().toISOString(),
+  } satisfies ProductShellSessionState);
+
   return {
     plan,
-    status: 'blocked',
-    summary: 'Login requires hosted orchestration and is not implemented in this repo yet.',
-    nextAction: 'Use `echelon login --plan` to inspect the workflow; run hosted Echelon orchestration to complete login.',
-    authUrl,
+    status: 'ready',
+    summary: `Authenticated hosted session for ${userId}.`,
+    nextAction: `Run \`echelon link\` to attach ${detected.projectName} to a hosted Echelon project.`,
+    stateFile: sessionPath,
+    authUrl: start.auth_url,
+    data: { userId },
   };
 }
 
@@ -486,13 +580,66 @@ export async function runLinkWorkflow(
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildLinkPlan(detected);
+  if (!isHostedOrchestrationConfigured()) {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Link requires hosted orchestration.',
+      nextAction: getHostedOrchestrationHint(),
+    };
+  }
 
-  // TGA-184: no fake local link state.
+  const session = await readJsonState<ProductShellSessionState>(getSessionPath(detected.cwd));
+  if (!session || session.kind !== 'session' || session.status !== 'authenticated') {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Link requires an authenticated local Echelon session.',
+      nextAction: 'Run `echelon login` first, then retry `echelon link`.',
+    };
+  }
+
+  let linked: Awaited<ReturnType<typeof hostedLinkProject>>;
+  try {
+    linked = await hostedLinkProject({
+      project_name: detected.projectName,
+      env: detected.env,
+      framework: detected.framework,
+      user_id: session.userId,
+    });
+  } catch (error) {
+    const msg = error instanceof HostedOrchestrationError ? error.message : 'Unable to link project.';
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Hosted project link failed.',
+      nextAction: msg,
+    };
+  }
+
+  const dashboardUrl = linked.dashboard_url || buildDashboardUrl(linked.project_slug, detected.env);
+  const linkPath = getLinkPath(detected.cwd);
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(linkPath, {
+    kind: 'project-link',
+    projectName: detected.projectName,
+    projectSlug: linked.project_slug,
+    projectId: linked.project_id,
+    framework: detected.framework,
+    linkedAt: new Date().toISOString(),
+    dashboardUrl,
+  } satisfies ProductShellLinkState);
+
   return {
     plan,
-    status: 'blocked',
-    summary: 'Link requires hosted orchestration and is not implemented in this repo yet.',
-    nextAction: 'Use `echelon link --plan` to inspect the workflow; run hosted Echelon orchestration to complete linking.',
+    status: 'ready',
+    summary: `Linked ${detected.projectName} to hosted project ${linked.project_id}.`,
+    nextAction: `Run \`echelon env --env ${detected.env}\` to persist the active environment, then open ${dashboardUrl}.`,
+    stateFile: linkPath,
+    dashboardUrl,
+    data: { projectId: linked.project_id, projectSlug: linked.project_slug },
   };
 }
 
@@ -501,12 +648,74 @@ export async function runEnvironmentWorkflow(
 ): Promise<ProductShellWorkflowExecution> {
   const detected = await detectProductShellContext(context);
   const plan = buildEnvironmentPlan(detected);
+  if (!isHostedOrchestrationConfigured()) {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Environment selection requires hosted orchestration.',
+      nextAction: getHostedOrchestrationHint(),
+    };
+  }
 
-  // TGA-184: env selection must come from real hosted environment resolution.
+  const session = await readJsonState<ProductShellSessionState>(getSessionPath(detected.cwd));
+  if (!session || session.kind !== 'session' || session.status !== 'authenticated') {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Environment selection requires an authenticated local Echelon session.',
+      nextAction: 'Run `echelon login` first, then retry `echelon env`.',
+    };
+  }
+
+  const link = await readJsonState<ProductShellLinkState>(getLinkPath(detected.cwd));
+  if (!link || link.kind !== 'project-link') {
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Environment selection requires a linked Echelon project.',
+      nextAction: 'Run `echelon link` first, then retry `echelon env`.',
+    };
+  }
+
+  let envResult: Awaited<ReturnType<typeof hostedSelectEnvironment>>;
+  try {
+    envResult = await hostedSelectEnvironment({
+      project_id: link.projectId,
+      project_slug: link.projectSlug,
+      env: detected.env,
+      user_id: session.userId,
+    });
+  } catch (error) {
+    const msg = error instanceof HostedOrchestrationError ? error.message : 'Unable to resolve environment.';
+    return {
+      plan,
+      status: 'blocked',
+      summary: 'Hosted environment resolution failed.',
+      nextAction: msg,
+    };
+  }
+
+  const dashboardUrl = envResult.dashboard_url || buildDashboardUrl(link.projectSlug, detected.env);
+  const environmentPath = getEnvironmentPath(detected.cwd);
+
+  await ensureStateDir(detected.cwd);
+  await ensureGitignoreContains(detected.cwd);
+  await writeJsonState(environmentPath, {
+    kind: 'environment',
+    env: detected.env,
+    projectId: link.projectId,
+    projectSlug: link.projectSlug,
+    updatedAt: new Date().toISOString(),
+    dashboardUrl,
+  } satisfies ProductShellEnvironmentState);
+
   return {
     plan,
-    status: 'blocked',
-    summary: 'Environment selection requires hosted orchestration and is not implemented in this repo yet.',
-    nextAction: 'Use `echelon env --plan` to inspect the workflow; run hosted Echelon orchestration to resolve environments.',
+    status: 'ready',
+    summary: `Selected ${detected.env} as the active Echelon environment for ${link.projectId}.`,
+    nextAction: `Open ${dashboardUrl} or continue with \`echelon protect <connector>\`.`,
+    stateFile: environmentPath,
+    dashboardUrl,
+    data: { env: detected.env, projectId: link.projectId },
   };
 }

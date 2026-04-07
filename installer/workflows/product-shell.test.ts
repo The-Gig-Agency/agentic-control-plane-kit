@@ -116,21 +116,44 @@ describe('product-shell workflow scaffold', () => {
     detectFrameworkMock.mockResolvedValueOnce('express');
 
     const cwd = makeTempDir('echelon-login');
-    const result = await runLoginWorkflow({
-      cwd,
-      env: 'staging',
-    }, {
-      userId: 'alan',
-    });
+    delete process.env.ECHELON_ORCHESTRATOR_BASE_URL;
+    const result = await runLoginWorkflow({ cwd, env: 'staging' });
 
     expect(result.status).toBe('blocked');
     expect(result.authUrl).toContain('project=echelon-login');
     expect(fs.existsSync(path.join(cwd, '.echelon'))).toBe(false);
   });
 
+  it('runs hosted login and persists metadata-only session state when configured', async () => {
+    detectFrameworkMock.mockResolvedValueOnce('express');
+    process.env.ECHELON_ORCHESTRATOR_BASE_URL = 'https://orchestrator.test';
+
+    const cwd = makeTempDir('echelon-hosted-login');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ auth_url: 'https://auth.test', poll_id: 'poll_123' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'pending' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 'authenticated', user_id: 'user_abc' }), { status: 200 }),
+      );
+
+    vi.stubGlobal('fetch', fetchMock as any);
+
+    const result = await runLoginWorkflow({ cwd, env: 'development' });
+    expect(result.status).toBe('ready');
+    expect(result.stateFile).toContain('.echelon/session.json');
+
+    const saved = JSON.parse(fs.readFileSync(path.join(cwd, '.echelon', 'session.json'), 'utf-8'));
+    expect(saved.userId).toBe('user_abc');
+  });
+
   it('blocks link (no fake project IDs) until hosted orchestration exists', async () => {
     const blockedCwd = makeTempDir('echelon-link');
     detectFrameworkMock.mockResolvedValueOnce('express');
+    delete process.env.ECHELON_ORCHESTRATOR_BASE_URL;
     const blocked = await runLinkWorkflow({
       cwd: blockedCwd,
     });
@@ -141,7 +164,7 @@ describe('product-shell workflow scaffold', () => {
   it('blocks env selection (no fake env state) until hosted orchestration exists', async () => {
     const cwd = makeTempDir('echelon-env');
     detectFrameworkMock.mockResolvedValueOnce('supabase');
-    detectFrameworkMock.mockResolvedValueOnce('supabase');
+    delete process.env.ECHELON_ORCHESTRATOR_BASE_URL;
     const envResult = await runEnvironmentWorkflow({
       cwd,
       env: 'staging',
