@@ -224,7 +224,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public operator login (product-shell workflow)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
-    .option('--plan', 'Show the workflow plan (login is blocked until hosted orchestration exists)')
+    .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
       if (!opts.plan) {
@@ -250,7 +250,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Public link workflow (associate local app with a hosted project)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
-    .option('--plan', 'Show the workflow plan without executing local orchestration')
+    .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
       if (!opts.plan) {
@@ -276,7 +276,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .description('Select or create the active product environment for the linked project')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
     .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
-    .option('--plan', 'Show the workflow plan without executing local orchestration')
+    .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
       if (!opts.plan) {
