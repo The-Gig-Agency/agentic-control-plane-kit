@@ -552,7 +552,13 @@ export async function handleHttpRequest(req: Request): Promise<Response> {
     }
 
     if (path === '/audit' && req.method === 'GET') {
-      return new Response(JSON.stringify(buildEmptyAuditResponse()), {
+      // TGA-181: Do not return placeholder success responses for audit.
+      // Audit query is not yet backed by a stable governance/gateway datastore.
+      return new Response(JSON.stringify({
+        error: 'audit_unavailable',
+        message: 'Audit query is not available yet on the public facade. This endpoint will return real entries once a stable backend is finalized.',
+      }), {
+        status: 501,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
