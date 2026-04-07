@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { createServer } from 'node:http';
 
 vi.mock('../detect/index.js', () => ({
   detectFramework: vi.fn(),
@@ -29,6 +30,8 @@ function makeTempDir(name: string): string {
 
 afterEach(() => {
   detectFrameworkMock.mockReset();
+  vi.unstubAllGlobals();
+  delete process.env.ECHELON_ORCHESTRATOR_BASE_URL;
   while (tempDirs.length > 0) {
     const dir = tempDirs.pop();
     if (dir) {
@@ -148,6 +151,89 @@ describe('product-shell workflow scaffold', () => {
 
     const saved = JSON.parse(fs.readFileSync(path.join(cwd, '.echelon', 'session.json'), 'utf-8'));
     expect(saved.userId).toBe('user_abc');
+  });
+
+  it('returns blocked (not throw) when hosted login start returns a remote error', async () => {
+    detectFrameworkMock.mockResolvedValueOnce('express');
+    process.env.ECHELON_ORCHESTRATOR_BASE_URL = 'https://orchestrator.test';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ error: 'nope' }), { status: 500 })) as any,
+    );
+
+    const cwd = makeTempDir('echelon-login-start-error');
+    await expect(runLoginWorkflow({ cwd, env: 'development' })).resolves.toMatchObject({
+      status: 'blocked',
+      summary: 'Hosted login start failed.',
+    });
+  });
+
+  it('returns blocked (not throw) when hosted login poll throws (e.g. network error)', async () => {
+    detectFrameworkMock.mockResolvedValueOnce('express');
+    process.env.ECHELON_ORCHESTRATOR_BASE_URL = 'https://orchestrator.test';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ auth_url: 'https://auth.test', poll_id: 'poll_123' }), { status: 200 }),
+        )
+        .mockRejectedValueOnce(new Error('network down')) as any,
+    );
+
+    const cwd = makeTempDir('echelon-login-poll-error');
+    await expect(runLoginWorkflow({ cwd, env: 'development' })).resolves.toMatchObject({
+      status: 'blocked',
+      summary: 'Hosted login poll failed.',
+    });
+  });
+
+  it('smoke: hosted login succeeds against a real mock orchestrator server', async () => {
+    detectFrameworkMock.mockResolvedValueOnce('express');
+
+    let calls: string[] = [];
+    let pollCount = 0;
+    const server = createServer((req, res) => {
+      const url = req.url || '';
+      calls.push(url);
+      res.setHeader('Content-Type', 'application/json');
+
+      if (url === '/cli/login/start') {
+        res.statusCode = 200;
+        res.end(JSON.stringify({ auth_url: 'http://auth.local', poll_id: 'poll_1' }));
+        return;
+      }
+
+      if (url === '/cli/login/poll') {
+        pollCount += 1;
+        res.statusCode = 200;
+        if (pollCount < 2) {
+          res.end(JSON.stringify({ status: 'pending' }));
+          return;
+        }
+        res.end(JSON.stringify({ status: 'authenticated', user_id: 'user_1' }));
+        return;
+      }
+
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: 'not found' }));
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+    const addr = server.address();
+    const port = typeof addr === 'object' && addr ? addr.port : 0;
+    process.env.ECHELON_ORCHESTRATOR_BASE_URL = `http://127.0.0.1:${port}`;
+    process.env.ECHELON_LOGIN_TIMEOUT_MS = '5000';
+    process.env.ECHELON_LOGIN_POLL_MS = '5';
+
+    const cwd = makeTempDir('echelon-login-mock-server');
+    const result = await runLoginWorkflow({ cwd, env: 'development' });
+    server.close();
+
+    expect(result.status).toBe('ready');
+    expect(calls).toContain('/cli/login/start');
+    expect(calls).toContain('/cli/login/poll');
   });
 
   it('blocks link (no fake project IDs) until hosted orchestration exists', async () => {

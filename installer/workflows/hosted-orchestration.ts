@@ -35,6 +35,59 @@ export class HostedOrchestrationError extends Error {
   }
 }
 
+function assertString(value: unknown, label: string): asserts value is string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new HostedOrchestrationError('invalid_response', `Expected ${label} to be a non-empty string`);
+  }
+}
+
+function assertOneOf<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  label: string,
+): asserts value is T {
+  if (typeof value !== 'string' || !(allowed as readonly string[]).includes(value)) {
+    throw new HostedOrchestrationError(
+      'invalid_response',
+      `Expected ${label} to be one of: ${allowed.join(', ')}`,
+    );
+  }
+}
+
+function validateLoginStartResponse(payload: any): HostedLoginStartResponse {
+  assertString(payload?.auth_url, 'auth_url');
+  assertString(payload?.poll_id, 'poll_id');
+  return payload as HostedLoginStartResponse;
+}
+
+function validateLoginPollResponse(payload: any): HostedLoginPollResponse {
+  assertOneOf(payload?.status, ['pending', 'authenticated', 'failed'] as const, 'status');
+  if (payload.status === 'authenticated') {
+    assertString(payload?.user_id, 'user_id');
+  }
+  if (payload.status === 'failed' && payload?.error !== undefined && typeof payload.error !== 'string') {
+    throw new HostedOrchestrationError('invalid_response', 'Expected error to be a string when provided');
+  }
+  return payload as HostedLoginPollResponse;
+}
+
+function validateLinkResponse(payload: any): HostedLinkResponse {
+  assertString(payload?.project_id, 'project_id');
+  assertString(payload?.project_slug, 'project_slug');
+  if (payload?.dashboard_url !== undefined && typeof payload.dashboard_url !== 'string') {
+    throw new HostedOrchestrationError('invalid_response', 'Expected dashboard_url to be a string when provided');
+  }
+  return payload as HostedLinkResponse;
+}
+
+function validateEnvironmentResponse(payload: any): HostedEnvironmentResponse {
+  assertOneOf(payload?.env, ['development', 'staging', 'production'] as const, 'env');
+  if (payload?.dashboard_url !== undefined && typeof payload.dashboard_url !== 'string') {
+    throw new HostedOrchestrationError('invalid_response', 'Expected dashboard_url to be a string when provided');
+  }
+  return payload as HostedEnvironmentResponse;
+}
+
 function getOrchestratorBaseUrl(): string | null {
   const raw = process.env.ECHELON_ORCHESTRATOR_BASE_URL?.trim();
   if (!raw) return null;
@@ -72,7 +125,7 @@ export async function hostedLoginStart(input: {
   if (!base) {
     throw new HostedOrchestrationError('not_configured', getHostedOrchestrationHint());
   }
-  return await postJson<HostedLoginStartResponse>(`${base}/cli/login/start`, input);
+  return validateLoginStartResponse(await postJson(`${base}/cli/login/start`, input));
 }
 
 export async function hostedLoginPoll(input: {
@@ -82,7 +135,7 @@ export async function hostedLoginPoll(input: {
   if (!base) {
     throw new HostedOrchestrationError('not_configured', getHostedOrchestrationHint());
   }
-  return await postJson<HostedLoginPollResponse>(`${base}/cli/login/poll`, input);
+  return validateLoginPollResponse(await postJson(`${base}/cli/login/poll`, input));
 }
 
 export async function hostedLinkProject(input: {
@@ -95,7 +148,7 @@ export async function hostedLinkProject(input: {
   if (!base) {
     throw new HostedOrchestrationError('not_configured', getHostedOrchestrationHint());
   }
-  return await postJson<HostedLinkResponse>(`${base}/cli/projects/link`, input);
+  return validateLinkResponse(await postJson(`${base}/cli/projects/link`, input));
 }
 
 export async function hostedSelectEnvironment(input: {
@@ -108,6 +161,6 @@ export async function hostedSelectEnvironment(input: {
   if (!base) {
     throw new HostedOrchestrationError('not_configured', getHostedOrchestrationHint());
   }
-  return await postJson<HostedEnvironmentResponse>(`${base}/cli/environments/select`, input);
+  return validateEnvironmentResponse(await postJson(`${base}/cli/environments/select`, input));
 }
 
