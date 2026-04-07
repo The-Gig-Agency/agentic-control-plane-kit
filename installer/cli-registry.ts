@@ -17,6 +17,7 @@ import {
   runLoginWorkflow,
 } from './workflows/index.js';
 import { doctor } from './doctor.js';
+import { approve as approveRemote } from './approve.js';
 import type { Environment, InstallOptions } from './cli-types.js';
 import type { Framework } from './detect/index.js';
 import type { ProductShellWorkflowPlan } from './workflows/index.js';
@@ -45,7 +46,7 @@ export const ECHELON_PUBLIC_VERBS: readonly EchelonVerbMeta[] = [
   { name: 'dev', summary: 'Convenience: target development environment', category: 'public', implementation: 'workflow_plan' },
   { name: 'deploy', summary: 'Deploy (alias for production protect workflow)', category: 'public', implementation: 'full' },
   { name: 'audit', summary: 'Readiness / diagnostics for the public surface', category: 'public', implementation: 'full' },
-  { name: 'approve', summary: 'Finalize approvals (product-shell placeholder)', category: 'public', implementation: 'placeholder' },
+  { name: 'approve', summary: 'Finalize approvals (governance-backed)', category: 'public', implementation: 'full' },
 ] as const;
 
 export const ECHELON_LEGACY_VERBS: readonly EchelonVerbMeta[] = [
@@ -402,13 +403,43 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
 
   program
     .command('approve')
-    .description('Finalize approvals (operator step; handled by Governance Hub in production)')
-    .action(async () => {
-      // TGA-183: no placeholder success output; approvals are not implemented here.
-      console.error('approve is not implemented in this repo yet.');
-      console.error('Next: use your governance approval UI/API to finalize protected changes.');
-      console.error('');
-      process.exitCode = 1;
+    .description('Finalize approvals (operator step; calls Governance Hub)')
+    .option('--approval-id <id>', 'Approval identifier returned from governance decision')
+    .option('--decision-id <id>', 'Decision identifier returned from /evaluate (optional)')
+    .option('--actor-id <id>', 'Operator identity (optional)')
+    .option('--governance-hub-url <url>', 'Override Governance Hub URL (default: GOVENANCE_HUB_URL)')
+    .option('--kernel-api-key <key>', 'Override kernel API key (default: ACP_KERNEL_KEY)')
+    .option('--endpoint-url <url>', 'Override approve endpoint URL')
+    .option('--json', 'Output machine-readable JSON')
+    .action(async (opts: { approvalId?: string; decisionId?: string; actorId?: string; governanceHubUrl?: string; kernelApiKey?: string; endpointUrl?: string; json?: boolean }) => {
+      const result = await approveRemote({
+        approvalId: opts.approvalId,
+        decisionId: opts.decisionId,
+        actorId: opts.actorId,
+        governanceHubUrl: opts.governanceHubUrl,
+        kernelApiKey: opts.kernelApiKey,
+        endpointUrlOverride: opts.endpointUrl,
+      });
+
+      if (opts.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        if (result.ok) {
+          console.log('Approval: Approved ✓');
+          if (result.approval_id) console.log(`Approval ID: ${result.approval_id}`);
+          if (result.decision_id) console.log(`Decision ID: ${result.decision_id}`);
+          if (result.message) console.log(`Message: ${result.message}`);
+          console.log('');
+        } else {
+          console.error('Approval: Failed ✗');
+          console.error(result.message || 'Unknown error');
+          console.error('');
+        }
+      }
+
+      if (!result.ok) {
+        process.exitCode = 1;
+      }
     });
 
   program
