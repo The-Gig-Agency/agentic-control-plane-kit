@@ -19,6 +19,15 @@ describe('detectSupabase extended signals', () => {
     await expect(detectSupabase(cwd)).resolves.toBe(true);
   });
 
+  it('detects VITE_SUPABASE_* in .env.example', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'echelon-sb-vite-'));
+    fs.writeFileSync(
+      path.join(cwd, '.env.example'),
+      'VITE_SUPABASE_URL=https://x.supabase.co\n',
+    );
+    await expect(detectSupabase(cwd)).resolves.toBe(true);
+  });
+
   it('detects from supabase/migrations directory', async () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'echelon-sb-mig-'));
     fs.mkdirSync(path.join(cwd, 'supabase', 'migrations'), { recursive: true });

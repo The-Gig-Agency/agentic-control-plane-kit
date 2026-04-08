@@ -52,7 +52,8 @@ function envTemplatesMentionSupabase(cwd: string): boolean {
     '.env.local.example',
     '.env.development.example',
   ];
-  const re = /SUPABASE_(URL|ANON|PUBLISHABLE|SERVICE_ROLE|JWT)/i;
+  const re =
+    /(?:^|\n)\s*(?:VITE_|NEXT_PUBLIC_)?SUPABASE_(URL|ANON|PUBLISHABLE|SERVICE_ROLE|JWT)\s*=/im;
   for (const n of names) {
     const p = path.join(cwd, n);
     if (!fs.existsSync(p)) continue;
