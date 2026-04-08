@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import type { Framework } from './detect/index.js';
 import { classifyRepo } from './detect/index.js';
 import type { InstallOptions } from './cli-types.js';
+import { defaultManageBasePath } from './default-base-path.js';
 
 export interface DryRunPlannedWrite {
   path: string;
@@ -41,11 +42,7 @@ export async function buildDryRunReport(
   options: InstallOptions,
 ): Promise<DryRunReport> {
   const classification = await classifyRepo(cwd);
-  const basePath =
-    options.basePath ||
-    (framework === 'hybrid_netlify_supabase'
-      ? '/.netlify/functions/echelon-manage'
-      : '/api/manage');
+  const basePath = options.basePath || (framework ? defaultManageBasePath(framework) : '/api/manage');
   const backend = backendDir(cwd);
   const blockers: string[] = [];
   const warnings: string[] = [];

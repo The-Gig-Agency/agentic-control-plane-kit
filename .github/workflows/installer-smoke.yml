@@ -17,11 +17,13 @@ jobs:
       - run: npm ci
       - name: Bundle Echelon CLI (compile contract)
         run: npm run build:cli
-      - name: Installer discovery, dry-run JSON, collision, CLI report-json
+      - name: Installer discovery, dry-run JSON, collision, CLI report-json, audit facade
         run: |
           npm test --silent \
             tests/detect-corpus.spec.ts \
             tests/dry-run-report.spec.ts \
             tests/classify-repo-precedence.spec.ts \
             tests/route-collision.spec.ts \
-            tests/cli-dry-run-report-json.spec.ts
+            tests/default-base-path.spec.ts \
+            tests/cli-dry-run-report-json.spec.ts \
+            tests/gateway-public-facade-audit.spec.ts

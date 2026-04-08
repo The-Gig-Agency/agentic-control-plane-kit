@@ -200,7 +200,9 @@ export function buildPublicAuditResponseFromRows(input: {
     const actorId = requireStringField(row, ['actor_id', 'api_key_id'], 'actor_id');
 
     if (!action.includes('.')) {
-      throw new Error(`Audit row action must be namespaced (expected "connector.action", got "${action}")`);
+      throw new Error(
+        `Audit row action must be namespaced as "connector.action" (e.g. "shopify.products.update") for public facade mapping; got "${action}". Fix the audit-query row or the backend projection.`,
+      );
     }
     const connector = action.split('.')[0];
 

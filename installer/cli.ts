@@ -16,6 +16,7 @@ import { installSupabase } from './installers/supabase-installer.js';
 import { installHybridNetlifySupabase } from './installers/hybrid-netlify-supabase-installer.js';
 import { buildDryRunReport } from './dry-run-report.js';
 import { checkRouteCollision } from './route-collision.js';
+import { defaultManageBasePath } from './default-base-path.js';
 import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
@@ -178,19 +179,26 @@ export async function install(options: InstallOptions = {}): Promise<void> {
  */
 async function validatePreInstall(options: InstallOptions, framework: string): Promise<void> {
   const cwd = process.cwd();
-  const basePath = options.basePath || '/api/manage';
-  
+  const basePath = options.basePath || defaultManageBasePath(framework);
+
   console.log('🔍 Running pre-install validation...\n');
-  
-  // 1. Route collision check
+
+  // 1. Route collision check (basePath must match the path the installer will actually use)
   const collision = checkRouteCollision(cwd, framework, basePath);
   if (collision) {
-    console.error(`❌ Route collision detected: ${basePath} already exists\n`);
+    console.error(`❌ Route collision detected for planned route ${basePath}\n`);
     console.log('💡 Suggestions:');
-    console.log(`   Use --base-path /api/acp`);
-    console.log(`   Use --base-path /api/echelon`);
-    console.log(`   Use --base-path /api/control-plane\n`);
-    throw new Error(`Route collision: ${basePath} already exists. Use --base-path to specify alternative.`);
+    if (framework === 'hybrid_netlify_supabase') {
+      console.log('   Remove or relocate the existing Netlify function (e.g. netlify/functions/echelon-manage.ts).');
+      console.log('   Or pass --base-path with a different public path and align redirects.\n');
+    } else {
+      console.log(`   Use --base-path /api/acp`);
+      console.log(`   Use --base-path /api/echelon`);
+      console.log(`   Use --base-path /api/control-plane\n`);
+    }
+    throw new Error(
+      `Route collision: ${basePath} already exists or conflicts with existing files. Use --base-path to specify an alternative.`,
+    );
   }
   
   // 2. Production mode confirmation

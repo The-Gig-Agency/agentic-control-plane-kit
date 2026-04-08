@@ -12,13 +12,12 @@ import { generateAdapters } from '../generators/generate-adapters.js';
 import { generateEndpoint } from '../generators/generate-endpoint.js';
 import { generateBindings } from '../generators/generate-bindings.js';
 import { generateMigrations } from '../generators/generate-migrations.js';
+import { HYBRID_DEFAULT_MANAGE_PATH } from '../default-base-path.js';
 
 export interface InstallResult {
   kernelId: string;
   integration: string;
 }
-
-const DEFAULT_MANAGE_PATH = '/.netlify/functions/echelon-manage';
 
 export async function installHybridNetlifySupabase(
   options: InstallOptions & { env?: Environment },
@@ -37,7 +36,7 @@ export async function installHybridNetlifySupabase(
 
   const integration = options.integration || (env === 'development' ? 'hybrid-dev' : 'hybrid');
 
-  const basePath = options.basePath || DEFAULT_MANAGE_PATH;
+  const basePath = options.basePath || HYBRID_DEFAULT_MANAGE_PATH;
 
   console.log(`📁 Hybrid (Netlify + Supabase) install → ${controlPlaneDir}\n`);
   console.log(`🌐 Public manage URL path: ${basePath}\n`);
