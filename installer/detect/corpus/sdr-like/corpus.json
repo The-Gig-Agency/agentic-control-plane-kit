@@ -9,6 +9,7 @@
   },
   "requiredPaths": [
     "netlify.toml",
-    "supabase/config.toml"
+    "package.json",
+    ".env.example"
   ]
 }

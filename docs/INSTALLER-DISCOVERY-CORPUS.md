@@ -4,7 +4,7 @@ Corpus fixtures live under `installer/detect/corpus/<id>/` with a `corpus.json` 
 
 | ID | Intent |
 |----|--------|
-| `sdr-like` | Netlify + Supabase hybrid SaaS; expect `hybrid_netlify_supabase` with high confidence. |
+| `sdr-like` | Netlify + Supabase hybrid SaaS (no `supabase/config.toml`; env + client SDK signals like many production repos); expect `hybrid_netlify_supabase` with high confidence. |
 
 **API**
 

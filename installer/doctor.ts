@@ -101,7 +101,7 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
 
   if (placeholderHits.length) {
     const extra =
-      `Replace installer placeholder markers in control_plane (e.g. ${placeholderHits[0]?.file}:${placeholderHits[0]?.line}).`;
+      `Replace installer placeholders in adapters / Netlify functions (e.g. ${placeholderHits[0]?.file}:${placeholderHits[0]?.line}).`;
     result.hint = result.hint ? `${result.hint}\n${extra}` : extra;
   }
 

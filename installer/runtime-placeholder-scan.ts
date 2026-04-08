@@ -1,15 +1,25 @@
 /**
- * Fail-closed scan for obvious runtime placeholders in generated control_plane (TGA-192).
+ * Fail-closed scan for installer-generated surfaces that must be completed for a runnable install (TGA-192).
+ *
+ * Scoped to **adapters** and **Netlify function** outputs — not the copied kernel tree (avoids false positives).
  */
 
 import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as path from 'path';
 
-/** Focus on installer-known sentinel strings; adapter TODOs are tracked separately (TGA-192). */
+/**
+ * Sentinel strings from templates (your_app / packs) plus non-runnable adapter stubs.
+ */
 const PLACEHOLDER_PATTERNS: { name: string; re: RegExp }[] = [
   { name: 'your_app', re: /\byour_app\b/i },
   { name: 'your_domain', re: /\byour_domain\b/i },
   { name: 'yourDomainPack', re: /\byourDomainPack\b/ },
+  { name: 'adapter_todo', re: /\bTODO\b/ },
+  { name: 'adapter_not_implemented', re: /NotImplementedError/ },
+  {
+    name: 'adapter_implement_throw',
+    re: /throw\s+new\s+Error\s*\(\s*['"]Implement/i,
+  },
 ];
 
 const SCANNABLE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.py', '.mts', '.cts']);
@@ -35,16 +45,22 @@ function walkFiles(dir: string, out: string[]): void {
   }
 }
 
-export function scanControlPlaneForPlaceholders(projectRoot: string): PlaceholderHit[] {
-  const roots = [
-    path.join(projectRoot, 'control_plane'),
-    path.join(projectRoot, 'backend', 'control_plane'),
-  ];
+/** Only paths the Echelon installer generates or expects operators to complete first. */
+function collectGeneratedSurfaceFiles(projectRoot: string): string[] {
   const files: string[] = [];
-  for (const r of roots) {
-    walkFiles(r, files);
+  const adapterRoots = [
+    path.join(projectRoot, 'control_plane', 'adapters'),
+    path.join(projectRoot, 'backend', 'control_plane', 'adapters'),
+  ];
+  for (const dir of adapterRoots) {
+    walkFiles(dir, files);
   }
+  walkFiles(path.join(projectRoot, 'netlify', 'functions'), files);
+  return files;
+}
 
+export function scanControlPlaneForPlaceholders(projectRoot: string): PlaceholderHit[] {
+  const files = collectGeneratedSurfaceFiles(projectRoot);
   const hits: PlaceholderHit[] = [];
   for (const file of files) {
     const content = fs.readFileSync(file, 'utf-8');
