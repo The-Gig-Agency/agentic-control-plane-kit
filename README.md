@@ -21,6 +21,27 @@ If you're reviewing ACP from LinkedIn/GitHub, use this order:
 2. **Manual / advanced embedding:** [INSTALL.md](./INSTALL.md)
 3. **Full multi-repo architecture (maintainers):** [THREE-REPO-CANONICAL-MODEL.md](./THREE-REPO-CANONICAL-MODEL.md) — internal choreography; not required for app integration.
 
+## Supported environments (matrix)
+
+| Topic | Guidance |
+|-------|----------|
+| **Node.js** | **20.x** required — matches [`package.json`](./package.json) `engines.node` (CI uses 20). |
+| **npm** | **10.x** recommended (`packageManager` / workflows). |
+| **Stable / public path** | `echelon init`, `echelon protect`, `echelon audit`; SDK `defineConfig` / `protect` / `createClient` / `translateConfig`. |
+| **Legacy / compatibility** | `echelon install` (scaffold by framework); manual flow in [INSTALL.md](./INSTALL.md). |
+| **Installer targets** | Django, Express, Supabase Edge, hybrid Netlify + Supabase (`hybrid_netlify_supabase`). |
+| **`@supabase/supabase-js`** | **Optional peer** of this package — add it when your adapters or examples use Supabase ([INSTALL.md prerequisites](./INSTALL.md#prerequisites)). |
+
+## Current positioning
+
+ACP now credibly supports a limited, explicit set of SaaS repo shapes, especially Django, Express, Supabase, and hybrid Netlify + Supabase, through tested scaffolding, clearer installer mode contracts, and a more truthful readiness story.
+
+That support is intentionally constrained:
+- supported as guided scaffolds for known repo shapes
+- suitable for bootstrap and engineer-led installs
+- not yet a universal one-click installer for arbitrary repos
+- production adoption still requires engineering judgment and adapter completion
+
 ## Quickstart
 
 ### Option A: Public product-shell workflow (Recommended)
@@ -34,6 +55,8 @@ npx --package agentic-control-plane-kit echelon protect shopify
 npx --package agentic-control-plane-kit echelon audit
 ```
 
+Requires **Node 20+** on the machine running `npx` (see [Supported environments](#supported-environments-matrix)).
+
 The public CLI will:
 - auto-detect your framework
 - scaffold/init ACP kernel artifacts through a product-facing workflow
@@ -44,7 +67,7 @@ Planned / hosted orchestration (currently blocked):
 
 - `echelon login`, `echelon link`, and `echelon env` are **planned** and currently **blocked until hosted orchestration exists**. They do **not** persist `.echelon/*.json` state today.
 
-Legacy note:
+**Legacy / compatibility:** `echelon install` remains the supported scaffold for existing adopters; new projects should prefer `echelon init` above. Manual embedding ([INSTALL.md](./INSTALL.md)) is advanced maintenance.
 
 ```bash
 npx --package agentic-control-plane-kit echelon install --framework django
@@ -65,6 +88,8 @@ See [INSTALL.md](./INSTALL.md) for manual embedding and advanced setup.
 ```bash
 npm install agentic-control-plane-kit
 ```
+
+**Dependency note:** `@supabase/supabase-js` is an **optional peer dependency**. Install it in your project when you implement Supabase-backed adapters, copy Supabase/hybrid installer output, or follow examples that import `createClient` from `@supabase/supabase-js`. Purely Django, Prisma, or other DB stacks do not require it.
 
 The package now ships **built JavaScript (`dist/*.mjs`) and type declarations (`dist/types/*`)** for the public entrypoints:
 

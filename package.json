@@ -86,6 +86,11 @@
   "peerDependencies": {
     "@supabase/supabase-js": "^2.0.0"
   },
+  "peerDependenciesMeta": {
+    "@supabase/supabase-js": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "commander": "^14.0.3"
   }
