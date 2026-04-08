@@ -19,6 +19,8 @@ The installer will:
 See [installer/README.md](./installer/README.md) for details.
 For installer ownership boundaries and readiness gates, see [installer/INSTALLER-V2-CONTRACT.md](./installer/INSTALLER-V2-CONTRACT.md).
 
+**Hybrid Netlify + Supabase (SDR-like):** copy or study [examples/golden-hybrid-sdr-like](./examples/golden-hybrid-sdr-like/) and [docs/GOLDEN-HYBRID-REFERENCE.md](./docs/GOLDEN-HYBRID-REFERENCE.md).
+
 ---
 
 ## Manual Installation (Advanced)

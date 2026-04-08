@@ -31,4 +31,5 @@ jobs:
             tests/route-collision.spec.ts \
             tests/default-base-path.spec.ts \
             tests/cli-dry-run-report-json.spec.ts \
-            tests/gateway-public-facade-audit.spec.ts
+            tests/gateway-public-facade-audit.spec.ts \
+            tests/golden-hybrid-install.spec.ts

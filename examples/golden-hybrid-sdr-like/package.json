@@ -1,0 +1,12 @@
+{
+  "name": "golden-hybrid-sdr-like",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Golden reference layout: Netlify + Supabase hybrid SaaS (TGA-191). Copy or validate with kit scripts.",
+  "scripts": {
+    "build": "node -e \"require('fs').mkdirSync('public',{recursive:true}); require('fs').writeFileSync('public/.keep','')\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}
