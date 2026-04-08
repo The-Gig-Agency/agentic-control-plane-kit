@@ -32,4 +32,5 @@ jobs:
             tests/default-base-path.spec.ts \
             tests/cli-dry-run-report-json.spec.ts \
             tests/gateway-public-facade-audit.spec.ts \
-            tests/golden-hybrid-install.spec.ts
+            tests/golden-hybrid-install.spec.ts \
+            tests/docs-contract.spec.ts

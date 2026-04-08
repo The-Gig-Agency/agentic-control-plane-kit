@@ -151,7 +151,7 @@ LIMIT 2;
 ### Runtime Testing Required
 
 **Test in:**
-- Node.js (v18+)
+- Node.js (v20+; matches kit `engines.node`)
 - Deno
 - Supabase Edge Functions
 - Vercel Edge Runtime

@@ -4,7 +4,7 @@
 
 ## Quick start (recommended)
 
-**Preferred path: use the Echelon CLI installer**
+**Preferred path: use the Echelon CLI installer** (requires **Node 20+** on the machine running `npx`; see [`package.json`](./package.json) `engines`).
 
 ```bash
 npx --package agentic-control-plane-kit echelon install
@@ -25,13 +25,23 @@ For installer ownership boundaries and readiness gates, see [installer/INSTALLER
 
 ## Manual Installation (Advanced)
 
+> **Preferred path:** use `npx echelon init` (or legacy `echelon install`) so the kit scaffolds adapters, endpoints, and migrations. The sections below are for **custom embedding** when you are not using the installer.
+
 If you prefer manual installation or need custom setup, follow the steps below.
 
 ### Prerequisites
 
-- Node.js 18+ and pnpm/npm/yarn
+- **Node.js 20.x** (matches `package.json` `engines.node`; do not use Node 18 — installs and CI are validated on 20+)
+- npm 10+ (or pnpm/yarn, if you align versions yourself)
 - TypeScript (for TypeScript projects)
-- Your existing database client (Supabase, Prisma, etc.)
+- Your existing database client (Prisma, Drizzle, Supabase, etc.) **where you implement adapters**
+
+**Peer dependency `@supabase/supabase-js`:** the package lists it as an **optional** peer. Install it in your app when you:
+- call Supabase from your **own** adapter code, or
+- follow examples that use `createClient` from `@supabase/supabase-js`, or
+- use installer output that imports it (Express / hybrid templates often add it to your `package.json`).
+
+You do **not** need it for Django-only or generic SQL adapter flows that never import Supabase.
 
 ### 1. Copy Kit into Repo
 
@@ -88,7 +98,7 @@ Create `controlplane.bindings.json` in your repo root:
 }
 ```
 
-**This is the only per-repo "truth" an agent needs.** Everything else is inferable.
+**Bindings are the primary static config** an agent or operator edits (table/column names, pack list, adapter *kind*). They do **not** replace code: you still wire **DbAdapter**, **AuditAdapter**, and related interfaces (or use installer-generated scaffolding and then customize).
 
 ### 3. Create `/manage` Endpoint Wrapper
 
@@ -153,16 +163,20 @@ This checks:
 - ✅ All actions declare a scope
 - ✅ Dry-run actions return impact shape
 
-## What Gets Generated/Inferred
+## What bindings drive vs what you still implement
 
-From `controlplane.bindings.json`, the system infers:
-- Database adapter implementation
-- Tenant resolution logic
-- API key validation
-- Scope mappings
-- Action namespaces
+From `controlplane.bindings.json` (and the public `echelon.config.ts` bridge), the kernel **reads**:
 
-**You only configure bindings. Everything else is automatic.**
+- Which **packs** are enabled and how **scopes** map to actions  
+- **Schema-level hints**: table/column names for tenants, API keys, and the declared DB adapter *type* (e.g. `supabase`)
+
+The host application **still provides**:
+
+- **Adapter implementations** (queries, transactions, audit persistence, idempotency, rate limits, ceilings) — unless you rely on **installer-generated** files and then replace bootstrap/in-memory pieces for production  
+- **HTTP wiring** for `/manage` (unless the installer emitted it)  
+- **Operational env** (DB URLs, service keys, governance URLs) as required by your stack
+
+**Installer scaffolds** default adapters and migrations for supported frameworks; **manual** flows assume you create adapters yourself. Neither path removes the need to align adapters with your real persistence and security model.
 
 ## Next Steps
 

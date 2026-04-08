@@ -83,7 +83,7 @@ expect(hash1).toBe(hash2); // Should be identical
 
 **Test in each runtime:**
 
-- [ ] Node.js (v18+)
+- [ ] Node.js (v20+; matches kit `engines.node`)
 - [ ] Deno
 - [ ] Supabase Edge Functions
 - [ ] Vercel Edge Runtime
