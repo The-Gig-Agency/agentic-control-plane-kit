@@ -16,6 +16,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { readInstallManifest, resolvePacksFromBindings } from './manifest.js';
+import { scanControlPlaneForPlaceholders } from './runtime-placeholder-scan.js';
+import type { PlaceholderHit } from './runtime-placeholder-scan.js';
 
 export interface DoctorResult {
   acp_kernel: 'installed' | 'not_installed';
@@ -26,6 +28,7 @@ export interface DoctorResult {
   packs: string[];
   audit_adapter: 'present' | 'not_present';
   manifest_present: boolean;
+  runtime_placeholder_hits?: PlaceholderHit[];
   hint?: string;
 }
 
@@ -75,6 +78,8 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
   // 5. Audit Adapter
   const auditAdapterPresent = checkAuditAdapter(cwd);
 
+  const placeholderHits = kernelInstalled ? scanControlPlaneForPlaceholders(cwd) : [];
+
   const result: DoctorResult = {
     acp_kernel: kernelInstalled ? 'installed' : 'not_installed',
     kernel_id: kernelId,
@@ -83,6 +88,7 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
     packs,
     audit_adapter: auditAdapterPresent ? 'present' : 'not_present',
     manifest_present: !!manifest,
+    ...(placeholderHits.length ? { runtime_placeholder_hits: placeholderHits } : {}),
   };
 
   if (options?.probe && governanceHubEnv) {
@@ -91,6 +97,12 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
 
   if (!kernelInstalled || (!manifest && !bindingsValid)) {
     result.hint = 'Run: npx echelon install';
+  }
+
+  if (placeholderHits.length) {
+    const extra =
+      `Replace installer placeholder markers in control_plane (e.g. ${placeholderHits[0]?.file}:${placeholderHits[0]?.line}).`;
+    result.hint = result.hint ? `${result.hint}\n${extra}` : extra;
   }
 
   if (options?.json) {
@@ -103,6 +115,8 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
       governanceHubConnected: result.governance_hub === 'connected',
       auditAdapterPresent: result.audit_adapter === 'present',
       manifestPresent: result.manifest_present,
+      runtimePlaceholderHits: result.runtime_placeholder_hits ?? [],
+      placeholdersClean: (result.runtime_placeholder_hits ?? []).length === 0,
       ...(result.hint && { hint: result.hint }),
       ...(result.governance_hub_probe && { governanceHubProbe: result.governance_hub_probe }),
     };
@@ -120,6 +134,16 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
 
   if (manifest) {
     console.log('\nManifest: .acp/install.json (trust anchor)');
+  }
+
+  if (placeholderHits.length) {
+    console.log('\nRuntime placeholders (resolve before production):');
+    for (const h of placeholderHits.slice(0, 12)) {
+      console.log(`  - ${h.file}:${h.line} [${h.rule}] ${h.text}`);
+    }
+    if (placeholderHits.length > 12) {
+      console.log(`  … and ${placeholderHits.length - 12} more`);
+    }
   }
 
   if (result.hint) {

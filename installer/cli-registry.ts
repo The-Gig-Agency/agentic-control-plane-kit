@@ -224,7 +224,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('login')
     .description('Public operator login (product-shell workflow)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
@@ -250,7 +254,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('link')
     .description('Public link workflow (associate local app with a hosted project)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
@@ -276,7 +284,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('env')
     .description('Select or create the active product environment for the linked project')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--plan', 'Show the workflow plan (hosted orchestration required)')
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { env: string; framework: string; plan?: boolean; json?: boolean }) => {
@@ -302,12 +314,26 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('init')
     .description('Public init workflow (scaffold with readiness gates)')
     .option('--env <env>', 'Environment (development|staging|production)', 'development')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--plan', 'Show the workflow plan without writing files')
     .option('--dry-run', 'Show what would be generated (no writes)')
+    .option('--report-json', 'With --dry-run, emit machine-readable JSON preview (TGA-193)', false)
     .option('--register', 'Attempt hosted registration (advanced)', false)
     .option('--json', 'Output machine-readable JSON')
-    .action(async (opts: { env: string; framework: string; plan?: boolean; dryRun?: boolean; register?: boolean; json?: boolean }) => {
+    .action(
+      async (opts: {
+        env: string;
+        framework: string;
+        plan?: boolean;
+        dryRun?: boolean;
+        reportJson?: boolean;
+        register?: boolean;
+        json?: boolean;
+      }) => {
       if (opts.plan) {
         const plan = await createInitWorkflowPlan({
           cwd: process.cwd(),
@@ -324,6 +350,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
         framework: (opts.framework as InstallOptions['framework']) ?? 'auto',
         env: opts.env as Environment,
         dryRun: opts.dryRun,
+        reportJson: opts.reportJson,
         // Public path defaults to local scaffolding; hosted registration is opt-in.
         skipRegistration: !opts.register,
       };
@@ -340,7 +367,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .command('protect <connector>')
     .description('Public protect workflow (verify readiness + prepare safe execution)')
     .option('--env <env>', 'Environment (development|staging|production)', 'production')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--plan', 'Show the workflow plan without executing readiness checks')
     .option('--json', 'Output machine-readable JSON')
     .option('--probe', 'Probe Governance Hub connectivity', false)
@@ -366,7 +397,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
   program
     .command('dev')
     .description('Convenience: target development environment')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--json', 'Output machine-readable JSON')
     .action(async (opts: { framework: string; json?: boolean }) => {
       const plan = await createEnvironmentWorkflowPlan({
@@ -380,7 +415,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
   program
     .command('deploy')
     .description('Deploy (alias for production protect workflow)')
-    .option('--framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '--framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('--json', 'Output machine-readable JSON')
     .option('--probe', 'Probe Governance Hub connectivity', false)
     .action(async (opts: { framework: string; json?: boolean; probe?: boolean }) => {
@@ -445,7 +484,11 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
   program
     .command('install')
     .description('DEPRECATED: legacy installer (use init/dev/deploy workflows instead)')
-    .option('-f, --framework <framework>', 'Framework (django|express|supabase|auto)', 'auto')
+    .option(
+      '-f, --framework <framework>',
+      'Framework (django|express|supabase|hybrid_netlify_supabase|auto)',
+      'auto',
+    )
     .option('-e, --env <env>', 'Environment (development|staging|production)', 'development')
     .option('--kernel-id <id>', '[operator-only] Kernel ID (auto-generated in dev)')
     .option('--integration <name>', '[operator-only] Integration name')
@@ -459,6 +502,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
     .option('--no-migrations', '[operator-only] Code-only install (skip migration generation)')
     .option('--migrations-only', '[operator-only] Generate migrations only (skip code installation)')
     .option('--dry-run', 'Show what would be generated (no writes)')
+    .option('--report-json', 'With --dry-run, emit machine-readable JSON preview', false)
     .action(async (opts: Record<string, unknown>) => {
       const options: InstallOptions = {
         framework: opts.framework as InstallOptions['framework'],
@@ -475,6 +519,7 @@ export function registerEchelonCommands(program: Command, handlers: EchelonComma
         noMigrations: opts.noMigrations as boolean | undefined,
         migrationsOnly: opts.migrationsOnly as boolean | undefined,
         dryRun: opts.dryRun as boolean | undefined,
+        reportJson: opts.reportJson as boolean | undefined,
       };
       try {
         await handlers.install(options);

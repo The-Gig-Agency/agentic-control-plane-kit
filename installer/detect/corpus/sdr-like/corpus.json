@@ -1,0 +1,14 @@
+{
+  "id": "sdr-like",
+  "description": "Netlify + Supabase hybrid SaaS (SDR-style) fingerprint",
+  "expected": {
+    "framework": "hybrid_netlify_supabase",
+    "topology": "netlify_serverless_plus_supabase",
+    "recommendedTarget": "hybrid_netlify_supabase",
+    "minConfidence": "high"
+  },
+  "requiredPaths": [
+    "netlify.toml",
+    "supabase/config.toml"
+  ]
+}

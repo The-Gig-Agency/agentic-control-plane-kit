@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface EndpointGenerationOptions {
-  framework: 'django' | 'express' | 'supabase';
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase';
   outputDir: string;
   integration: string;
   kernelId: string;
@@ -23,6 +23,8 @@ export async function generateEndpoint(options: EndpointGenerationOptions): Prom
       return await generateExpressEndpoint(outputDir, integration, kernelId, basePath);
     case 'supabase':
       return await generateSupabaseEndpoint(outputDir, integration, kernelId, basePath);
+    case 'hybrid_netlify_supabase':
+      return await generateHybridNetlifyEndpoint(outputDir, integration, kernelId, basePath);
   }
 }
 
@@ -335,7 +337,12 @@ def get_client_ip(request):
   return filePath;
 }
 
-async function generateExpressEndpoint(outputDir: string, integration: string, kernelId: string): Promise<string> {
+async function generateExpressEndpoint(
+  outputDir: string,
+  integration: string,
+  kernelId: string,
+  _basePath?: string,
+): Promise<string> {
   const apiDir = path.join(outputDir, 'api');
   fs.mkdirSync(apiDir, { recursive: true });
 
@@ -345,19 +352,32 @@ async function generateExpressEndpoint(outputDir: string, integration: string, k
  */
 
 import { createManageRouter } from '../control_plane/kernel';
-import { iamPack, webhooksPack, settingsPack } from '../control_plane/packs';
 import { createAdapters } from '../control_plane/adapters';
 import bindings from '../controlplane.bindings.json';
 
 const router = createManageRouter({
   ...createAdapters(),
   bindings,
-  packs: [iamPack, webhooksPack, settingsPack, yourDomainPack]
+  packs: [],
 });
+
+function mapStatus(response: { ok: boolean; code?: string }): number {
+  if (response.ok) return 200;
+  const m: Record<string, number> = {
+    INVALID_API_KEY: 401,
+    SCOPE_DENIED: 403,
+    NOT_FOUND: 404,
+    RATE_LIMITED: 429,
+    VALIDATION_ERROR: 400,
+    FEATURE_DISABLED: 503,
+    GOVERNANCE_UNAVAILABLE: 503,
+  };
+  return m[response.code || ''] || 500;
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ ok: false, error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED', request_id: 'n/a' });
   }
 
   try {
@@ -365,12 +385,17 @@ export default async function handler(req: any, res: any) {
     const response = await router(body, {
       request: req,
       ipAddress: req.ip || req.headers['x-forwarded-for'],
-      userAgent: req.headers['user-agent']
+      userAgent: req.headers['user-agent'],
     });
 
-    res.status(response.status || 200).json(JSON.parse(response.body));
+    res.status(mapStatus(response)).json(response);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({
+      ok: false,
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      request_id: 'n/a',
+    });
   }
 }
 `;
@@ -380,7 +405,12 @@ export default async function handler(req: any, res: any) {
   return filePath;
 }
 
-async function generateSupabaseEndpoint(outputDir: string, integration: string, kernelId: string): Promise<string> {
+async function generateSupabaseEndpoint(
+  outputDir: string,
+  integration: string,
+  kernelId: string,
+  _basePath?: string,
+): Promise<string> {
   const functionsDir = path.join(outputDir, 'supabase', 'functions', 'manage');
   fs.mkdirSync(functionsDir, { recursive: true });
 
@@ -391,22 +421,38 @@ async function generateSupabaseEndpoint(outputDir: string, integration: string, 
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createManageRouter } from '../../control_plane/kernel';
-import { iamPack, webhooksPack, settingsPack } from '../../control_plane/packs';
 import { createAdapters } from '../../control_plane/adapters';
 import bindings from '../../controlplane.bindings.json';
 
 const router = createManageRouter({
   ...createAdapters(),
   bindings,
-  packs: [iamPack, webhooksPack, settingsPack, yourDomainPack]
+  packs: [],
 });
+
+function mapStatus(response: { ok: boolean; code?: string }): number {
+  if (response.ok) return 200;
+  const m: Record<string, number> = {
+    INVALID_API_KEY: 401,
+    SCOPE_DENIED: 403,
+    NOT_FOUND: 404,
+    RATE_LIMITED: 429,
+    VALIDATION_ERROR: 400,
+    FEATURE_DISABLED: 503,
+    GOVERNANCE_UNAVAILABLE: 503,
+  };
+  return m[response.code || ''] || 500;
+}
 
 serve(async (req) => {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Method not allowed', code: 'METHOD_NOT_ALLOWED', request_id: 'n/a' }),
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   try {
@@ -414,23 +460,131 @@ serve(async (req) => {
     const response = await router(body, {
       request: req,
       ipAddress: req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown'
+      userAgent: req.headers.get('user-agent') || 'unknown',
     });
 
-    return new Response(response.body, {
-      status: response.status || 200,
-      headers: { 'Content-Type': 'application/json', ...response.headers }
+    return new Response(JSON.stringify(response), {
+      status: mapStatus(response),
+      headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  } catch (_error) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        request_id: 'n/a',
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 });
 `;
 
   const filePath = path.join(functionsDir, 'index.ts');
   fs.writeFileSync(filePath, indexTs);
+  return filePath;
+}
+
+async function generateHybridNetlifyEndpoint(
+  outputDir: string,
+  _integration: string,
+  _kernelId: string,
+  basePath?: string,
+): Promise<string> {
+  const fnDir = path.join(outputDir, 'netlify', 'functions');
+  fs.mkdirSync(fnDir, { recursive: true });
+
+  const publicPath = basePath || '/.netlify/functions/echelon-manage';
+
+  const manageTs = `/**
+ * Netlify Function: Echelon /manage (hybrid Netlify + Supabase topology)
+ * Generated by Echelon installer
+ * Public URL path: ${publicPath}
+ */
+
+import type { Context } from '@netlify/functions';
+import { createManageRouter } from '../../control_plane/kernel';
+import { createAdapters } from '../../control_plane/adapters';
+import bindings from '../../controlplane.bindings.json';
+
+const router = createManageRouter({
+  ...createAdapters(),
+  bindings,
+  packs: [],
+});
+
+function mapStatus(response: { ok: boolean; code?: string }): number {
+  if (response.ok) return 200;
+  const m: Record<string, number> = {
+    INVALID_API_KEY: 401,
+    SCOPE_DENIED: 403,
+    NOT_FOUND: 404,
+    RATE_LIMITED: 429,
+    VALIDATION_ERROR: 400,
+    FEATURE_DISABLED: 503,
+    GOVERNANCE_UNAVAILABLE: 503,
+  };
+  return m[response.code || ''] || 500;
+}
+
+export default async function handler(req: Request, _context: Context): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'Method not allowed',
+        code: 'METHOD_NOT_ALLOWED',
+        request_id: 'n/a',
+      }),
+      { status: 405, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'Invalid JSON',
+        code: 'VALIDATION_ERROR',
+        request_id: 'n/a',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  try {
+    const xf = req.headers.get('x-forwarded-for') || '';
+    const response = await router(body as any, {
+      request: req,
+      ipAddress: xf.split(',')[0]?.trim(),
+      userAgent: req.headers.get('user-agent') || undefined,
+    });
+    return new Response(JSON.stringify(response), {
+      status: mapStatus(response),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (_error) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        request_id: 'n/a',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+}
+`;
+
+  const filePath = path.join(fnDir, 'echelon-manage.ts');
+  fs.writeFileSync(filePath, manageTs);
   return filePath;
 }

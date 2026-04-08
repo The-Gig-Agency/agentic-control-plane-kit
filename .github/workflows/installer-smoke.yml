@@ -1,0 +1,19 @@
+name: Installer smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  corpus-and-dryrun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Discovery corpus + dry-run report tests
+        run: npm test --silent tests/detect-corpus.spec.ts tests/dry-run-report.spec.ts

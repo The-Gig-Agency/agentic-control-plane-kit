@@ -1,0 +1,4 @@
+# Minimal fixture — real projects include full Supabase project config
+
+[api]
+enabled = true
