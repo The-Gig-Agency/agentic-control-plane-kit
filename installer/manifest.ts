@@ -12,6 +12,23 @@ import * as path from 'path';
 import { getAgenticKitPackageRoot } from './kit-root.js';
 import { createHash } from 'crypto';
 
+export type AdapterBinding =
+  | 'bootstrap_in_memory'
+  | 'supabase_postgrest_durable'
+  | 'django_durable';
+
+export function plannedAdapterBinding(
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase',
+): AdapterBinding {
+  if (framework === 'express' || framework === 'hybrid_netlify_supabase') {
+    return 'bootstrap_in_memory';
+  }
+  if (framework === 'supabase') {
+    return 'supabase_postgrest_durable';
+  }
+  return 'django_durable';
+}
+
 export interface InstallManifest {
   kernel_version: string;
   kernel_hash: string;
@@ -19,6 +36,8 @@ export interface InstallManifest {
   installed_at: string;
   framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase';
   packs: string[];
+  /** How generated adapters persist state (TGA-194). */
+  adapter_binding?: AdapterBinding;
 }
 
 const DEFAULT_PACKS = ['iam', 'webhooks', 'settings'];

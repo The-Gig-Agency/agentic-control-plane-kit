@@ -21,7 +21,12 @@ import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
 import { status } from './status.js';
-import { writeInstallManifest, getKernelVersion, resolvePacksFromBindings } from './manifest.js';
+import {
+  writeInstallManifest,
+  getKernelVersion,
+  resolvePacksFromBindings,
+  plannedAdapterBinding,
+} from './manifest.js';
 import { registerEchelonCommands } from './cli-registry.js';
 import type { Environment, InstallOptions } from './cli-types.js';
 import readline from 'node:readline';
@@ -29,6 +34,18 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 export type { Environment, InstallOptions } from './cli-types.js';
+
+function adapterBindingForFramework(
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase',
+): AdapterBinding {
+  if (framework === 'express' || framework === 'hybrid_netlify_supabase') {
+    return 'bootstrap_in_memory';
+  }
+  if (framework === 'supabase') {
+    return 'supabase_postgrest_durable';
+  }
+  return 'django_durable';
+}
 
 export async function install(options: InstallOptions = {}): Promise<void> {
   const machineDryRun = !!(options.dryRun && options.reportJson);
@@ -150,8 +167,16 @@ export async function install(options: InstallOptions = {}): Promise<void> {
     installed_at: new Date().toISOString(),
     framework,
     packs,
+    adapter_binding: plannedAdapterBinding(framework),
   });
   console.log('📋 Install manifest written to .acp/install.json\n');
+
+  if (framework === 'express' || framework === 'hybrid_netlify_supabase') {
+    console.log(
+      '⚠️  Adapter binding: bootstrap_in_memory (OK for dev/smoke). Production requires durable DB-backed adapters or explicit ECHELON_ADAPTER_PROFILE=bootstrap / ECHELON_ALLOW_BOOTSTRAP_ADAPTERS=1.\n' +
+        '   See docs/ECHELON-INSTALLER-MODE-CONTRACT.md\n',
+    );
+  }
 
   console.log('✅ Installation complete!\n');
   

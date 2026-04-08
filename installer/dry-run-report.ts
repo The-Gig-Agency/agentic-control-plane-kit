@@ -8,6 +8,7 @@ import type { Framework } from './detect/index.js';
 import { classifyRepo } from './detect/index.js';
 import type { InstallOptions } from './cli-types.js';
 import { defaultManageBasePath } from './default-base-path.js';
+import { plannedAdapterBinding, type AdapterBinding } from './manifest.js';
 
 export interface DryRunPlannedWrite {
   path: string;
@@ -30,6 +31,8 @@ export interface DryRunReport {
   dependency_hints: string[];
   blockers: string[];
   warnings: string[];
+  /** Planned persistence semantics for generated adapters (TGA-194). */
+  adapter_binding: AdapterBinding | null;
 }
 
 function backendDir(cwd: string): string {
@@ -149,5 +152,6 @@ export async function buildDryRunReport(
     dependency_hints: deps,
     blockers,
     warnings,
+    adapter_binding: framework ? plannedAdapterBinding(framework) : null,
   };
 }

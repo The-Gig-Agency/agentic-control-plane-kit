@@ -39,6 +39,7 @@ These root docs are current and intended for active use:
 - [docs/INIT-PROTECT-STATE-MACHINE.md](./docs/INIT-PROTECT-STATE-MACHINE.md)
 - [docs/GOLDEN-HYBRID-REFERENCE.md](./docs/GOLDEN-HYBRID-REFERENCE.md) (TGA-191 — hybrid Netlify + Supabase validation story)
 - [docs/INSTALLER-DISCOVERY-CORPUS.md](./docs/INSTALLER-DISCOVERY-CORPUS.md) (TGA-189 — repo fingerprints + fixtures)
+- [docs/ECHELON-INSTALLER-MODE-CONTRACT.md](./docs/ECHELON-INSTALLER-MODE-CONTRACT.md) (TGA-194 — bootstrap vs production installer truth contract)
 - [docs/ECHELON-PUBLIC-SURFACE-MAP.md](./docs/ECHELON-PUBLIC-SURFACE-MAP.md)
 - [INTERNAL-ENDPOINTS-SECURITY.md](./INTERNAL-ENDPOINTS-SECURITY.md)
 - [MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md](./MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md)

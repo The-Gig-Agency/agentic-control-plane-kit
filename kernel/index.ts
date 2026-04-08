@@ -5,6 +5,7 @@
 
 export * from './src/types';
 export * from './src/dev-default-adapters';
+export * from './src/echelon-bootstrap-adapter-guard';
 export * from './src/auth';
 export * from './src/audit';
 export * from './src/audit-event';

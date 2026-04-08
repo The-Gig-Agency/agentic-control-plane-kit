@@ -20,6 +20,13 @@ describe('buildDryRunReport', () => {
       expect(r.planned_writes.length).toBeGreaterThan(0);
       expect(r.routes.length).toBeGreaterThan(0);
       expect(r.classification).toBeDefined();
+      if (fw === 'express' || fw === 'hybrid_netlify_supabase') {
+        expect(r.adapter_binding).toBe('bootstrap_in_memory');
+      } else if (fw === 'supabase') {
+        expect(r.adapter_binding).toBe('supabase_postgrest_durable');
+      } else {
+        expect(r.adapter_binding).toBe('django_durable');
+      }
     }
   });
 
