@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface BindingsGenerationOptions {
-  framework: 'django' | 'express' | 'supabase';
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase';
   outputDir: string;
   integration: string;
   kernelId: string;
@@ -34,7 +34,12 @@ export async function generateBindings(options: BindingsGenerationOptions): Prom
       prefix_length: 12,
     },
     database: {
-      adapter: framework === 'django' ? 'django' : framework === 'supabase' ? 'supabase' : 'prisma',
+      adapter:
+        framework === 'django'
+          ? 'django'
+          : framework === 'supabase' || framework === 'hybrid_netlify_supabase'
+            ? 'supabase'
+            : 'prisma',
     },
   };
 

@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface MigrationGenerationOptions {
-  framework: 'django' | 'express' | 'supabase';
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase';
   outputDir: string;
   validateOnly?: boolean;  // Phase 2: Only validate, don't generate
 }
@@ -39,6 +39,7 @@ export async function generateMigrations(options: MigrationGenerationOptions): P
       return await generateDjangoMigrations(outputDir);
     case 'express':
     case 'supabase':
+    case 'hybrid_netlify_supabase':
       return await generateSqlMigrations(outputDir);
   }
 }

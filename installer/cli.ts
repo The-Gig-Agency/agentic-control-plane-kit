@@ -13,6 +13,10 @@ import { detectFramework } from './detect/index.js';
 import { installDjango } from './installers/django-installer.js';
 import { installExpress } from './installers/express-installer.js';
 import { installSupabase } from './installers/supabase-installer.js';
+import { installHybridNetlifySupabase } from './installers/hybrid-netlify-supabase-installer.js';
+import { buildDryRunReport } from './dry-run-report.js';
+import { checkRouteCollision } from './route-collision.js';
+import { defaultManageBasePath } from './default-base-path.js';
 import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
@@ -27,11 +31,16 @@ import * as path from 'node:path';
 export type { Environment, InstallOptions } from './cli-types.js';
 
 export async function install(options: InstallOptions = {}): Promise<void> {
-  console.log('🚀 Echelon: Agentic Control Plane Installer\n');
+  const machineDryRun = !!(options.dryRun && options.reportJson);
+  if (!machineDryRun) {
+    console.log('🚀 Echelon: Agentic Control Plane Installer\n');
+  }
 
   // Phase 2: Handle dry-run mode (show diff, no writes)
   if (options.dryRun) {
-    console.log('🔍 DRY RUN MODE - No files will be written\n');
+    if (!machineDryRun) {
+      console.log('🔍 DRY RUN MODE - No files will be written\n');
+    }
     await dryRunInstall(options);
     return;
   }
@@ -98,6 +107,9 @@ export async function install(options: InstallOptions = {}): Promise<void> {
       break;
     case 'supabase':
       installResult = await installSupabase({ ...options, env });
+      break;
+    case 'hybrid_netlify_supabase':
+      installResult = await installHybridNetlifySupabase({ ...options, env });
       break;
     default:
       console.error(`❌ Unsupported framework: ${framework}`);
@@ -167,19 +179,26 @@ export async function install(options: InstallOptions = {}): Promise<void> {
  */
 async function validatePreInstall(options: InstallOptions, framework: string): Promise<void> {
   const cwd = process.cwd();
-  const basePath = options.basePath || '/api/manage';
-  
+  const basePath = options.basePath || defaultManageBasePath(framework);
+
   console.log('🔍 Running pre-install validation...\n');
-  
-  // 1. Route collision check
-  const collision = await checkRouteCollision(cwd, framework, basePath);
+
+  // 1. Route collision check (basePath must match the path the installer will actually use)
+  const collision = checkRouteCollision(cwd, framework, basePath);
   if (collision) {
-    console.error(`❌ Route collision detected: ${basePath} already exists\n`);
+    console.error(`❌ Route collision detected for planned route ${basePath}\n`);
     console.log('💡 Suggestions:');
-    console.log(`   Use --base-path /api/acp`);
-    console.log(`   Use --base-path /api/echelon`);
-    console.log(`   Use --base-path /api/control-plane\n`);
-    throw new Error(`Route collision: ${basePath} already exists. Use --base-path to specify alternative.`);
+    if (framework === 'hybrid_netlify_supabase') {
+      console.log('   Remove or relocate the existing Netlify function (e.g. netlify/functions/echelon-manage.ts).');
+      console.log('   Or pass --base-path with a different public path and align redirects.\n');
+    } else {
+      console.log(`   Use --base-path /api/acp`);
+      console.log(`   Use --base-path /api/echelon`);
+      console.log(`   Use --base-path /api/control-plane\n`);
+    }
+    throw new Error(
+      `Route collision: ${basePath} already exists or conflicts with existing files. Use --base-path to specify an alternative.`,
+    );
   }
   
   // 2. Production mode confirmation
@@ -189,82 +208,6 @@ async function validatePreInstall(options: InstallOptions, framework: string): P
   }
   
   console.log('✅ Pre-install validation passed\n');
-}
-
-/**
- * Check if route already exists in codebase
- */
-async function checkRouteCollision(cwd: string, framework: string, basePath: string): Promise<boolean> {
-  // Normalize base path (remove leading/trailing slashes for matching)
-  const normalizedPath = basePath.replace(/^\/+|\/+$/g, '');
-  const pathPatterns = [
-    normalizedPath,
-    basePath,
-    `'${basePath}'`,
-    `"${basePath}"`,
-    `path('${normalizedPath}'`,
-    `path("${normalizedPath}"`,
-  ];
-  
-  if (framework === 'django') {
-    // Check urls.py files
-    const possibleUrls = [
-      path.join(cwd, 'backend', 'api', 'urls.py'),
-      path.join(cwd, 'backend', 'urls.py'),
-      path.join(cwd, 'api', 'urls.py'),
-      path.join(cwd, 'urls.py'),
-    ];
-    
-    for (const urlPath of possibleUrls) {
-      if (fs.existsSync(urlPath)) {
-        const content = fs.readFileSync(urlPath, 'utf-8');
-        // Check for any of the path patterns
-        for (const pattern of pathPatterns) {
-          if (content.includes(pattern)) {
-            return true;  // Collision found
-          }
-        }
-      }
-    }
-  } else if (framework === 'express' || framework === 'supabase') {
-    // Check for route definitions in common locations
-    const searchPaths = [
-      path.join(cwd, 'api', 'manage.ts'),
-      path.join(cwd, 'api', 'manage.js'),
-      path.join(cwd, 'routes', 'manage.ts'),
-      path.join(cwd, 'pages', 'api', 'manage.ts'),
-      path.join(cwd, 'supabase', 'functions', 'manage', 'index.ts'),
-    ];
-    
-    for (const searchPath of searchPaths) {
-      if (fs.existsSync(searchPath)) {
-        return true;  // File exists, assume collision
-      }
-    }
-    
-    // Also check route registrations in main files
-    const mainFiles = [
-      path.join(cwd, 'app.ts'),
-      path.join(cwd, 'app.js'),
-      path.join(cwd, 'server.ts'),
-      path.join(cwd, 'server.js'),
-      path.join(cwd, 'index.ts'),
-      path.join(cwd, 'index.js'),
-    ];
-    
-    for (const mainFile of mainFiles) {
-      if (fs.existsSync(mainFile)) {
-        const content = fs.readFileSync(mainFile, 'utf-8');
-        for (const pattern of pathPatterns) {
-          if (content.includes(pattern)) {
-            return true;  // Collision found
-          }
-        }
-      }
-    }
-  }
-  
-  return false;  // No collision
 }
 
 /**
@@ -289,50 +232,54 @@ async function promptConfirm(message: string): Promise<boolean> {
  * Phase 2: Dry-run mode - show what would be generated without writing
  */
 async function dryRunInstall(options: InstallOptions): Promise<void> {
-  const framework = options.framework === 'auto' || !options.framework
-    ? await detectFramework()
-    : options.framework;
+  const framework =
+    options.framework === 'auto' || !options.framework ? await detectFramework() : options.framework;
 
   if (!framework) {
     console.error('❌ Could not detect framework. Please specify with --framework');
     process.exit(1);
   }
 
-  console.log(`📦 Would detect framework: ${framework}\n`);
-  console.log('📋 Files that would be generated:\n');
-
-  // Show what would be generated
   const cwd = process.cwd();
-  const backendDir = fs.existsSync(path.join(cwd, 'backend')) 
-    ? path.join(cwd, 'backend')
-    : cwd;
+  const report = await buildDryRunReport(cwd, framework, options);
 
-  if (framework === 'django') {
-    console.log('  📁 Kernel files:');
-    console.log(`     ${path.join(backendDir, 'control_plane', 'acp', '**/*.py')}`);
-    console.log('\n  🔧 Adapters:');
-    console.log(`     ${path.join(backendDir, 'control_plane', 'adapters', '__init__.py')}`);
-    console.log('\n  🌐 Endpoint:');
-    console.log(`     ${path.join(backendDir, 'control_plane', 'views', 'manage.py')}`);
-    console.log('\n  ⚙️  Bindings:');
-    console.log(`     ${path.join(backendDir, 'control_plane', 'bindings.py')}`);
-    
-    if (!options.noMigrations) {
-      console.log('\n  🗄️  Migrations:');
-      console.log(`     ${path.join(backendDir, 'your_app', 'migrations', 'XXXX_add_control_plane_tables.py')}`);
-    } else {
-      console.log('\n  ⚠️  Migrations: SKIPPED (--no-migrations)');
-    }
-    
-    console.log('\n  🔗 URL Route:');
-    console.log(`     Would add to: ${path.join(backendDir, 'api', 'urls.py')} (or similar)`);
-    console.log(`     Route: path('${options.basePath || '/api/manage'}', manage_endpoint)`);
-    
-    console.log('\n  📝 Environment:');
-    console.log(`     ${path.join(backendDir, '.env.example')}`);
+  if (options.reportJson) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
   }
 
-  console.log('\n✅ Dry-run complete. Use without --dry-run to actually install.\n');
+  console.log(`📦 Framework: ${framework}`);
+  console.log(`🔎 Topology: ${report.classification.topology} (confidence: ${report.classification.confidence})`);
+  if (report.classification.signals.length) {
+    console.log(`   Signals: ${report.classification.signals.join(', ')}`);
+  }
+  console.log(`🌐 Planned public route: ${report.basePath}\n`);
+
+  if (report.blockers.length) {
+    console.log('⛔ Blockers:');
+    report.blockers.forEach((b) => console.log(`   - ${b}`));
+    console.log('');
+  }
+  if (report.warnings.length) {
+    console.log('⚠️  Warnings:');
+    report.warnings.forEach((w) => console.log(`   - ${w}`));
+    console.log('');
+  }
+
+  console.log('📋 Planned writes:');
+  for (const w of report.planned_writes) {
+    console.log(`   [${w.category}] ${w.path}${w.description ? ` — ${w.description}` : ''}`);
+  }
+  console.log('\n🔗 Routes:');
+  report.routes.forEach((r) => console.log(`   - ${r}`));
+  console.log('\n📝 Env templates:');
+  report.env_templates.forEach((e) => console.log(`   - ${e}`));
+  if (report.dependency_hints.length) {
+    console.log('\n📦 Dependency hints:');
+    report.dependency_hints.forEach((d) => console.log(`   - ${d}`));
+  }
+  console.log(`\n🗄️  Migrations: ${report.migrations.mode}\n`);
+  console.log('✅ Dry-run complete. Use without --dry-run to apply changes.\n');
 }
 
 /**

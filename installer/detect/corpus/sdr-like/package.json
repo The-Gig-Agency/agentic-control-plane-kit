@@ -1,0 +1,7 @@
+{
+  "name": "fixture-sdr-like",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

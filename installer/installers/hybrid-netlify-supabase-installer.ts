@@ -1,5 +1,7 @@
 /**
- * Supabase-specific installer
+ * Hybrid installer: Netlify Functions own the public /manage HTTP surface;
+ * Supabase remains the data plane. TypeScript kernel + Prisma-oriented bindings
+ * match the express path; endpoint is emitted under netlify/functions/.
  */
 
 import * as fs from 'fs';
@@ -10,73 +12,78 @@ import { generateAdapters } from '../generators/generate-adapters.js';
 import { generateEndpoint } from '../generators/generate-endpoint.js';
 import { generateBindings } from '../generators/generate-bindings.js';
 import { generateMigrations } from '../generators/generate-migrations.js';
+import { HYBRID_DEFAULT_MANAGE_PATH } from '../default-base-path.js';
 
 export interface InstallResult {
   kernelId: string;
   integration: string;
 }
 
-export async function installSupabase(options: InstallOptions & { env?: Environment }): Promise<InstallResult> {
+export async function installHybridNetlifySupabase(
+  options: InstallOptions & { env?: Environment },
+): Promise<InstallResult> {
   const cwd = process.cwd();
   const env = options.env || 'development';
   const controlPlaneDir = path.join(cwd, 'control_plane');
-  
-  // Environment-aware defaults
-  const kernelId = options.kernelId || (env === 'development' 
-    ? `supabase-dev-${Date.now()}`
-    : env === 'staging'
-    ? `supabase-staging-${Date.now()}`
-    : 'supabase-kernel');
-  
-  const integration = options.integration || (env === 'development'
-    ? 'supabase-dev'
-    : 'supabase');
 
-  console.log(`📁 Installing to: ${controlPlaneDir}\n`);
+  const kernelId =
+    options.kernelId ||
+    (env === 'development'
+      ? `hybrid-dev-${Date.now()}`
+      : env === 'staging'
+        ? `hybrid-staging-${Date.now()}`
+        : 'hybrid-kernel');
 
-  // Step 1: Copy TypeScript kernel
+  const integration = options.integration || (env === 'development' ? 'hybrid-dev' : 'hybrid');
+
+  const basePath = options.basePath || HYBRID_DEFAULT_MANAGE_PATH;
+
+  console.log(`📁 Hybrid (Netlify + Supabase) install → ${controlPlaneDir}\n`);
+  console.log(`🌐 Public manage URL path: ${basePath}\n`);
+
   console.log('📦 Copying TypeScript kernel...');
-  await copyKernel(controlPlaneDir, 'typescript');
+  await copyKernel(controlPlaneDir);
   console.log('✅ Kernel copied\n');
 
-  // Step 2: Generate adapters
   console.log('🔧 Generating adapters...');
   await generateAdapters({
-    framework: 'supabase',
+    framework: 'hybrid_netlify_supabase',
     outputDir: controlPlaneDir,
     integration,
   });
   console.log('✅ Adapters generated\n');
 
-  // Step 3: Generate bindings
   console.log('⚙️  Generating bindings...');
   await generateBindings({
-    framework: 'supabase',
+    framework: 'hybrid_netlify_supabase',
     outputDir: cwd,
     integration,
     kernelId,
+    basePath,
   });
   console.log('✅ Bindings generated\n');
 
-  // Step 4: Generate Edge Function
-  console.log('🌐 Generating Supabase Edge Function...');
+  console.log('🌐 Generating Netlify function for manage...');
   await generateEndpoint({
-    framework: 'supabase',
+    framework: 'hybrid_netlify_supabase',
     outputDir: cwd,
     integration,
     kernelId,
+    basePath,
   });
-  console.log('✅ Edge Function generated\n');
+  console.log('✅ Netlify function generated\n');
 
-  // Step 5: Generate migrations
   console.log('🗄️  Generating database migrations...');
   const migrationFiles = await generateMigrations({
-    framework: 'supabase',
+    framework: 'hybrid_netlify_supabase',
     outputDir: cwd,
   });
   console.log(`✅ Migrations generated: ${migrationFiles.join(', ')}\n`);
 
-  // Step 6: Create .env.example
+  console.log('📦 Updating package.json...');
+  await updatePackageJson(cwd);
+  console.log('✅ Package.json updated\n');
+
   console.log('📝 Creating environment variable template...');
   await createEnvExample(cwd, kernelId, integration, options, env);
   console.log('✅ Environment template created\n');
@@ -84,12 +91,10 @@ export async function installSupabase(options: InstallOptions & { env?: Environm
   return { kernelId, integration };
 }
 
-async function copyKernel(targetDir: string, kernelType: 'typescript' | 'python'): Promise<void> {
+async function copyKernel(targetDir: string): Promise<void> {
   const repoRoot = getAgenticKitPackageRoot();
-  
   const kernelSource = path.join(repoRoot, 'kernel', 'src');
   const kernelTarget = path.join(targetDir, 'kernel', 'src');
-  
   fs.mkdirSync(kernelTarget, { recursive: true });
   copyDirectory(kernelSource, kernelTarget);
   const indexSrc = path.join(repoRoot, 'kernel', 'index.ts');
@@ -103,15 +108,11 @@ function copyDirectory(src: string, dest: string): void {
   if (!fs.existsSync(src)) {
     throw new Error(`Source directory does not exist: ${src}`);
   }
-  
   fs.mkdirSync(dest, { recursive: true });
-  
   const entries = fs.readdirSync(src, { withFileTypes: true });
-  
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
-    
     if (entry.isDirectory()) {
       copyDirectory(srcPath, destPath);
     } else {
@@ -120,39 +121,46 @@ function copyDirectory(src: string, dest: string): void {
   }
 }
 
-async function createEnvExample(cwd: string, kernelId: string, integration: string, options: InstallOptions, env: Environment): Promise<void> {
-  const isDev = env === 'development';
-  
-  const envExample = `# Agentic Control Plane Configuration
-# Generated by Echelon installer
-# Environment: ${env.toUpperCase()}
+async function updatePackageJson(cwd: string): Promise<void> {
+  const packageJsonPath = path.join(cwd, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    console.warn('⚠️  package.json not found. Skipping dependency update.');
+    return;
+  }
+  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  pkg.dependencies = pkg.dependencies || {};
+  if (!pkg.dependencies['@supabase/supabase-js']) {
+    pkg.dependencies['@supabase/supabase-js'] = '^2.0.0';
+  }
+  if (!pkg.devDependencies) {
+    pkg.devDependencies = {};
+  }
+  if (!pkg.devDependencies['@netlify/functions']) {
+    pkg.devDependencies['@netlify/functions'] = '^2.8.0';
+  }
+  fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n');
+}
 
-# Kernel Identity
+async function createEnvExample(
+  cwd: string,
+  kernelId: string,
+  integration: string,
+  options: InstallOptions,
+  env: Environment,
+): Promise<void> {
+  const isDev = env === 'development';
+  const envExample = `# Agentic Control Plane — Hybrid Netlify + Supabase
+# Public endpoint: Netlify Function (see netlify/functions/echelon-manage.ts)
+
 KERNEL_ID=${kernelId}
 INTEGRATION=${integration}
 
-${isDev ? `# Development Mode: Optional connections (safe to skip)
-# Governance Hub (Repo B) - Optional in dev
-# ACP_BASE_URL=https://dev-governance-hub.supabase.co
-# GOVERNANCE_HUB_URL=https://dev-governance-hub.supabase.co  # legacy alias
-# ACP_KERNEL_KEY=acp_kernel_dev_xxxxx
-
-# Key Vault Executor (Repo C) - Optional in dev
-# CIA_URL=https://dev-vault.supabase.co
-# CIA_SERVICE_KEY=cia_service_dev_xxxxx
-# CIA_ANON_KEY=eyJ...
-` : `# Governance Hub (Repo B)
-ACP_BASE_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}
-# GOVERNANCE_HUB_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}  # legacy alias
+${isDev ? `# Optional in dev
+# ACP_BASE_URL=
+# ACP_KERNEL_KEY=
+` : `ACP_BASE_URL=${options.governanceHubUrl || 'https://xxx.supabase.co'}
 ACP_KERNEL_KEY=${options.kernelApiKey || 'acp_kernel_xxxxx'}
-
-# Key Vault Executor (Repo C)
-CIA_URL=${options.ciaUrl || 'https://yyy.supabase.co'}
-CIA_SERVICE_KEY=${options.ciaServiceKey || 'cia_service_xxxxx'}
-CIA_ANON_KEY=${options.ciaAnonKey || 'eyJ...'}
 `}
 `;
-
-  const envPath = path.join(cwd, '.env.example');
-  fs.writeFileSync(envPath, envExample);
+  fs.writeFileSync(path.join(cwd, '.env.example'), envExample);
 }

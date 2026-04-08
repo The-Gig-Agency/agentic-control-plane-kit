@@ -17,7 +17,7 @@ export interface InstallManifest {
   kernel_hash: string;
   kernel_id: string;
   installed_at: string;
-  framework: 'django' | 'express' | 'supabase';
+  framework: 'django' | 'express' | 'supabase' | 'hybrid_netlify_supabase';
   packs: string[];
 }
 

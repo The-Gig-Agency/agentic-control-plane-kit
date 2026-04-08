@@ -97,6 +97,11 @@ async function copyKernel(targetDir: string, kernelType: 'typescript' | 'python'
   
   fs.mkdirSync(kernelTarget, { recursive: true });
   copyDirectory(kernelSource, kernelTarget);
+  const indexSrc = path.join(repoRoot, 'kernel', 'index.ts');
+  const indexDest = path.join(targetDir, 'kernel', 'index.ts');
+  if (fs.existsSync(indexSrc)) {
+    fs.copyFileSync(indexSrc, indexDest);
+  }
 }
 
 function copyDirectory(src: string, dest: string): void {
