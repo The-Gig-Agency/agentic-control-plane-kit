@@ -105,6 +105,12 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
     result.hint = result.hint ? `${result.hint}\n${extra}` : extra;
   }
 
+  if (manifest?.adapter_binding === 'bootstrap_in_memory') {
+    const boot =
+      'Install uses bootstrap_in_memory adapters (ephemeral). Do not deploy to production without durable adapters or explicit ECHELON_ADAPTER_PROFILE=bootstrap / ECHELON_ALLOW_BOOTSTRAP_ADAPTERS=1. See docs/ECHELON-INSTALLER-MODE-CONTRACT.md';
+    result.hint = result.hint ? `${result.hint}\n${boot}` : boot;
+  }
+
   if (options?.json) {
     const allHits = result.runtime_placeholder_hits ?? [];
     const maxHits = 50;
@@ -119,6 +125,12 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
       governanceHubConnected: result.governance_hub === 'connected',
       auditAdapterPresent: result.audit_adapter === 'present',
       manifestPresent: result.manifest_present,
+      adapterBinding: manifest?.adapter_binding ?? null,
+      productionBootstrapAdapterUnsafe:
+        manifest?.adapter_binding === 'bootstrap_in_memory' &&
+        process.env.NODE_ENV === 'production' &&
+        process.env.ECHELON_ADAPTER_PROFILE !== 'bootstrap' &&
+        process.env.ECHELON_ALLOW_BOOTSTRAP_ADAPTERS !== '1',
       runtimePlaceholderHitCount: allHits.length,
       runtimePlaceholderHits,
       runtimePlaceholderHitsTruncated: truncated,

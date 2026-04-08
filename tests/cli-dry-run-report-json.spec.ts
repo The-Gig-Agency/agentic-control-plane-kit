@@ -25,6 +25,7 @@ const REQUIRED_TOP_LEVEL_KEYS = [
   'dependency_hints',
   'blockers',
   'warnings',
+  'adapter_binding',
 ] as const;
 
 function runEchelon(args: string[], cwd: string): string {
@@ -53,6 +54,7 @@ describe('CLI dry-run --report-json', () => {
     expect(report.schemaVersion).toBe(1);
     expect(report.version).toBe(1);
     expect(report.framework).toBe('express');
+    expect(report.adapter_binding).toBe('bootstrap_in_memory');
   });
 
   it('legacy install prints the same top-level shape as init', () => {
