@@ -1,0 +1,7 @@
+# Golden hybrid template — Netlify owns the serverless /manage surface after Echelon init.
+[build]
+  command = "npm run build"
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"

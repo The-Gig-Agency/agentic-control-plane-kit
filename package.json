@@ -58,7 +58,9 @@
     "validate:installer": "bash installer/test/validate-installer.sh",
     "validate:installer:django": "bash installer/test/validate-installer.sh django",
     "validate:installer:express": "bash installer/test/validate-installer.sh express",
-    "validate:installer:supabase": "bash installer/test/validate-installer.sh supabase"
+    "validate:installer:supabase": "bash installer/test/validate-installer.sh supabase",
+    "test:golden-hybrid": "vitest run tests/golden-hybrid-install.spec.ts",
+    "validate:golden-hybrid": "bash scripts/validate-golden-hybrid.sh"
   },
   "keywords": [
     "control-plane",

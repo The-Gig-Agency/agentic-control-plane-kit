@@ -37,7 +37,7 @@ These root docs are current and intended for active use:
 - [docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md](./docs/MIGRATION-CONTROLPLANE-BINDINGS-TO-ECHELON-CONFIG.md)
 - [docs/SDK-EXPORT-MAP.md](./docs/SDK-EXPORT-MAP.md)
 - [docs/INIT-PROTECT-STATE-MACHINE.md](./docs/INIT-PROTECT-STATE-MACHINE.md)
-- [docs/GOLDEN-HYBRID-REFERENCE.md](./docs/GOLDEN-HYBRID-REFERENCE.md) (TGA-191 — hybrid Netlify + Supabase validation story)
+- [docs/GOLDEN-HYBRID-REFERENCE.md](./docs/GOLDEN-HYBRID-REFERENCE.md) (TGA-191 — hybrid Netlify + Supabase validation story; golden template: [examples/golden-hybrid-sdr-like](./examples/golden-hybrid-sdr-like/))
 - [docs/INSTALLER-DISCOVERY-CORPUS.md](./docs/INSTALLER-DISCOVERY-CORPUS.md) (TGA-189 — repo fingerprints + fixtures)
 - [docs/ECHELON-INSTALLER-MODE-CONTRACT.md](./docs/ECHELON-INSTALLER-MODE-CONTRACT.md) (TGA-194 — bootstrap vs production installer truth contract)
 - [docs/ECHELON-PUBLIC-SURFACE-MAP.md](./docs/ECHELON-PUBLIC-SURFACE-MAP.md)

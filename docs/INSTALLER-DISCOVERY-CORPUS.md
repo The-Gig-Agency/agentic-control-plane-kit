@@ -22,3 +22,5 @@ So a repo that genuinely mixes Django with Netlify/Supabase frontends is treated
 **Tests**: `tests/detect-corpus.spec.ts`
 
 Add new fixtures by copying a subtree of a sanitized real repo, listing `requiredPaths` in `corpus.json`, and extending tests.
+
+For a **full golden host layout** used in onboarding and `echelon init` validation (not just detection), see [`examples/golden-hybrid-sdr-like/`](../examples/golden-hybrid-sdr-like/) and [GOLDEN-HYBRID-REFERENCE.md](./GOLDEN-HYBRID-REFERENCE.md).
