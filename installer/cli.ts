@@ -15,6 +15,7 @@ import { installExpress } from './installers/express-installer.js';
 import { installSupabase } from './installers/supabase-installer.js';
 import { installHybridNetlifySupabase } from './installers/hybrid-netlify-supabase-installer.js';
 import { buildDryRunReport } from './dry-run-report.js';
+import { checkRouteCollision } from './route-collision.js';
 import { registerKernel } from './register/register-kernel.js';
 import { uninstall } from './uninstall.js';
 import { doctor } from './doctor.js';
@@ -29,11 +30,16 @@ import * as path from 'node:path';
 export type { Environment, InstallOptions } from './cli-types.js';
 
 export async function install(options: InstallOptions = {}): Promise<void> {
-  console.log('🚀 Echelon: Agentic Control Plane Installer\n');
+  const machineDryRun = !!(options.dryRun && options.reportJson);
+  if (!machineDryRun) {
+    console.log('🚀 Echelon: Agentic Control Plane Installer\n');
+  }
 
   // Phase 2: Handle dry-run mode (show diff, no writes)
   if (options.dryRun) {
-    console.log('🔍 DRY RUN MODE - No files will be written\n');
+    if (!machineDryRun) {
+      console.log('🔍 DRY RUN MODE - No files will be written\n');
+    }
     await dryRunInstall(options);
     return;
   }
@@ -177,7 +183,7 @@ async function validatePreInstall(options: InstallOptions, framework: string): P
   console.log('🔍 Running pre-install validation...\n');
   
   // 1. Route collision check
-  const collision = await checkRouteCollision(cwd, framework, basePath);
+  const collision = checkRouteCollision(cwd, framework, basePath);
   if (collision) {
     console.error(`❌ Route collision detected: ${basePath} already exists\n`);
     console.log('💡 Suggestions:');
@@ -194,83 +200,6 @@ async function validatePreInstall(options: InstallOptions, framework: string): P
   }
   
   console.log('✅ Pre-install validation passed\n');
-}
-
-/**
- * Check if route already exists in codebase
- */
-async function checkRouteCollision(cwd: string, framework: string, basePath: string): Promise<boolean> {
-  // Normalize base path (remove leading/trailing slashes for matching)
-  const normalizedPath = basePath.replace(/^\/+|\/+$/g, '');
-  const pathPatterns = [
-    normalizedPath,
-    basePath,
-    `'${basePath}'`,
-    `"${basePath}"`,
-    `path('${normalizedPath}'`,
-    `path("${normalizedPath}"`,
-  ];
-  
-  if (framework === 'django') {
-    // Check urls.py files
-    const possibleUrls = [
-      path.join(cwd, 'backend', 'api', 'urls.py'),
-      path.join(cwd, 'backend', 'urls.py'),
-      path.join(cwd, 'api', 'urls.py'),
-      path.join(cwd, 'urls.py'),
-    ];
-    
-    for (const urlPath of possibleUrls) {
-      if (fs.existsSync(urlPath)) {
-        const content = fs.readFileSync(urlPath, 'utf-8');
-        // Check for any of the path patterns
-        for (const pattern of pathPatterns) {
-          if (content.includes(pattern)) {
-            return true;  // Collision found
-          }
-        }
-      }
-    }
-  } else if (framework === 'express' || framework === 'supabase' || framework === 'hybrid_netlify_supabase') {
-    // Check for route definitions in common locations
-    const searchPaths = [
-      path.join(cwd, 'api', 'manage.ts'),
-      path.join(cwd, 'api', 'manage.js'),
-      path.join(cwd, 'routes', 'manage.ts'),
-      path.join(cwd, 'pages', 'api', 'manage.ts'),
-      path.join(cwd, 'supabase', 'functions', 'manage', 'index.ts'),
-      path.join(cwd, 'netlify', 'functions', 'echelon-manage.ts'),
-    ];
-    
-    for (const searchPath of searchPaths) {
-      if (fs.existsSync(searchPath)) {
-        return true;  // File exists, assume collision
-      }
-    }
-    
-    // Also check route registrations in main files
-    const mainFiles = [
-      path.join(cwd, 'app.ts'),
-      path.join(cwd, 'app.js'),
-      path.join(cwd, 'server.ts'),
-      path.join(cwd, 'server.js'),
-      path.join(cwd, 'index.ts'),
-      path.join(cwd, 'index.js'),
-    ];
-    
-    for (const mainFile of mainFiles) {
-      if (fs.existsSync(mainFile)) {
-        const content = fs.readFileSync(mainFile, 'utf-8');
-        for (const pattern of pathPatterns) {
-          if (content.includes(pattern)) {
-            return true;  // Collision found
-          }
-        }
-      }
-    }
-  }
-  
-  return false;  // No collision
 }
 
 /**

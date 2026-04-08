@@ -14,6 +14,7 @@ describe('buildDryRunReport', () => {
 
     for (const fw of ['django', 'express', 'supabase', 'hybrid_netlify_supabase'] as const) {
       const r = await buildDryRunReport(dir, fw, {});
+      expect(r.schemaVersion).toBe(1);
       expect(r.version).toBe(1);
       expect(r.framework).toBe(fw);
       expect(r.planned_writes.length).toBeGreaterThan(0);

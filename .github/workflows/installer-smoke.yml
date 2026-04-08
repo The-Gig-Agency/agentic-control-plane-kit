@@ -15,5 +15,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Discovery corpus + dry-run report tests
-        run: npm test --silent tests/detect-corpus.spec.ts tests/dry-run-report.spec.ts
+      - name: Bundle Echelon CLI (compile contract)
+        run: npm run build:cli
+      - name: Installer discovery, dry-run JSON, collision, CLI report-json
+        run: |
+          npm test --silent \
+            tests/detect-corpus.spec.ts \
+            tests/dry-run-report.spec.ts \
+            tests/classify-repo-precedence.spec.ts \
+            tests/route-collision.spec.ts \
+            tests/cli-dry-run-report-json.spec.ts

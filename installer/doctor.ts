@@ -106,6 +106,10 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
   }
 
   if (options?.json) {
+    const allHits = result.runtime_placeholder_hits ?? [];
+    const maxHits = 50;
+    const truncated = allHits.length > maxHits;
+    const runtimePlaceholderHits = truncated ? allHits.slice(0, maxHits) : allHits;
     // Machine-readable format for directory/verifier (camelCase + snake_case)
     const json = {
       kernelInstalled: result.acp_kernel === 'installed',
@@ -115,8 +119,10 @@ export async function doctor(options?: { json?: boolean; probe?: boolean }): Pro
       governanceHubConnected: result.governance_hub === 'connected',
       auditAdapterPresent: result.audit_adapter === 'present',
       manifestPresent: result.manifest_present,
-      runtimePlaceholderHits: result.runtime_placeholder_hits ?? [],
-      placeholdersClean: (result.runtime_placeholder_hits ?? []).length === 0,
+      runtimePlaceholderHitCount: allHits.length,
+      runtimePlaceholderHits,
+      runtimePlaceholderHitsTruncated: truncated,
+      placeholdersClean: allHits.length === 0,
       ...(result.hint && { hint: result.hint }),
       ...(result.governance_hub_probe && { governanceHubProbe: result.governance_hub_probe }),
     };

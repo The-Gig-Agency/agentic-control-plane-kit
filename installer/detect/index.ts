@@ -23,7 +23,10 @@ export interface RepoClassification {
 
 /**
  * Classify repo topology for installer target selection (TGA-189).
- * Prefer explicit hybrid when Netlify + Supabase both present (before single-runtime fallbacks).
+ *
+ * **Precedence:** Django is evaluated first. A monorepo with `manage.py` plus Netlify/Supabase
+ * artifacts is classified as `django` (backend-owned control plane). To force the hybrid
+ * Netlify surface, pass `--framework hybrid_netlify_supabase`.
  */
 export async function classifyRepo(cwd: string = process.cwd()): Promise<RepoClassification> {
   const signals: string[] = [];

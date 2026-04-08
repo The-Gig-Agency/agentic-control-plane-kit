@@ -15,6 +15,9 @@ export interface DryRunPlannedWrite {
 }
 
 export interface DryRunReport {
+  /** Contract version for `--report-json` consumers (bump when shape changes). */
+  schemaVersion: 1;
+  /** @deprecated Prefer schemaVersion; kept for backward compatibility. */
   version: 1;
   framework: Framework;
   classification: Awaited<ReturnType<typeof classifyRepo>>;
@@ -137,6 +140,7 @@ export async function buildDryRunReport(
   });
 
   return {
+    schemaVersion: 1,
     version: 1,
     framework,
     classification,
