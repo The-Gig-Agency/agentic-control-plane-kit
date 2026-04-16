@@ -41,6 +41,7 @@ These root docs are current and intended for active use:
 - [docs/INSTALLER-DISCOVERY-CORPUS.md](./docs/INSTALLER-DISCOVERY-CORPUS.md) (TGA-189 — repo fingerprints + fixtures)
 - [docs/ECHELON-INSTALLER-MODE-CONTRACT.md](./docs/ECHELON-INSTALLER-MODE-CONTRACT.md) (TGA-194 — bootstrap vs production installer truth contract)
 - [docs/ECHELON-PUBLIC-SURFACE-MAP.md](./docs/ECHELON-PUBLIC-SURFACE-MAP.md)
+- [docs/ACP-AGENTIFICATION-PRINCIPLES.md](./docs/ACP-AGENTIFICATION-PRINCIPLES.md) (default rule: wrap host systems with a `/manage` layer instead of installing ACP into core processes)
 - [INTERNAL-ENDPOINTS-SECURITY.md](./INTERNAL-ENDPOINTS-SECURITY.md)
 - [MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md](./MCP-GATEWAY-THREE-REPO-ARCHITECTURE.md)
 - [MCP-GATEWAY-SUMMARY.md](./MCP-GATEWAY-SUMMARY.md)

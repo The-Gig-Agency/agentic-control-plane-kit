@@ -2,6 +2,8 @@
 
 A reusable starter kit for adding a `/manage` control-plane API to any multi-tenant SaaS platform. **Echelon** is the product-shaped CLI and config story on top of this kit; the npm package name remains `agentic-control-plane-kit` for compatibility.
 
+ACP's default agentification rule is: wrap the host product with a narrow `/manage` layer and govern that layer, rather than installing ACP directly into the product's core business processes. See [docs/ACP-AGENTIFICATION-PRINCIPLES.md](./docs/ACP-AGENTIFICATION-PRINCIPLES.md).
+
 ## Overview
 
 This kit provides:
